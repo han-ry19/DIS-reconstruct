@@ -1,9 +1,9 @@
-# DIS 端到端验证
+# End-to-end verification
 
-端到端用例按 DIA／Dominate 的标识管理流程组织：
+The acceptance scenario follows the DIA/Dominate identifier-management workflow:
 
-用户与应用注册身份 → 用户登记数据 → 应用解析数据属性 → 应用申请访问 → 所有者批准 → 查询获批授权。
+Register user and application identities → register data → resolve its attributes → request access → record the owner's approval → resolve the approved authorization.
 
-用例检查身份公钥、数据属性、授权状态及 DNS 响应是否符合业务操作，并分别确认账本提交和解析可见。拒绝申请、越权请求、重复提交及服务重启用例补充验证管理流程。
+Checks will cover public keys, data attributes, authorization status, and DNS responses. Additional scenarios will exercise rejected requests, unauthorized operations, repeated submissions, and service restarts.
 
-该场景作为本重建系统的业务验收依据。
+This workflow defines the reconstruction's business acceptance criteria.

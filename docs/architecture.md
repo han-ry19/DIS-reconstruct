@@ -1,25 +1,25 @@
-# DIS 重建架构
+# Architecture
 
-系统围绕 DIA／Dominate 的标识管理业务展开：注册身份、登记数据、申请授权、所有者决定，以及查询管理结果。
+DIS-reconstruct follows the identifier-management workflow described in DIA and Dominate: register identities, register data, request access, record the owner's decision, and resolve the resulting records.
 
-## 业务入口
+## Application interface
 
-客户端与 DIS API 提供身份、数据和授权操作。注册建立身份与公钥的绑定；数据登记保存所有者、地址、签名和描述；授权申请与决定维护访问授权记录。
+The client and DIS API expose identity, data, and authorization operations. Identity registration binds an identifier to a public key. Data registration associates an identifier with an owner, address, signature, and profile. Authorization operations maintain requests and owner decisions.
 
-## Fabric 管理合约
+## Fabric contracts
 
-身份管理、标识管理和授权管理构成业务核心。peer 按合约模拟执行，客户端收集满足策略的匹配背书并提交排序；peer 校验交易后更新账本。
+Identity management, identifier management, and authorization management form the contract layer. Peers simulate contract execution, the client collects matching endorsements that satisfy the policy, and the ordering service orders transactions. Peers validate transactions and apply valid updates to the ledger.
 
-API 和 Fabric 客户端封装交易提交与查询，使应用能够直接操作 DIS 业务对象。
+The API's Fabric client handles transaction submission and queries for application-facing operations.
 
-## 查询与发布
+## Queries and DNS publication
 
-身份查询提供已登记公钥。同步服务按设计定期读取已提交的标识及授权状态，将其映射为 DNS 资源记录，生成区域文件并交给 CoreDNS 加载。
+Identity lookup returns a registered public key. The synchronization service is designed to periodically read committed identifier and authorization records, encode them as DNS resource records, and generate zone files for CoreDNS.
 
-用户持有私钥，Fabric 保存管理状态，CoreDNS 提供标识解析，外部数据服务保存原始数据。
+Clients retain private keys, Fabric stores management state, CoreDNS serves identifier records, and external data services store the original data.
 
-## 完成状态
+## Completion states
 
-交易提交表示管理记录已进入账本；DNS 可见表示对应记录已经进入解析服务。接口与运行检查分别呈现这两个状态，便于用户确认操作结果。
+Ledger commit indicates that a management record has been recorded. DNS visibility indicates that the corresponding record can be resolved. These states identify the outcome of an operation and its publication progress.
 
-本文档说明重建设计；当前组件进度见[运行手册](runbook.md)。
+See the [running guide](runbook.md) for currently executable functionality.

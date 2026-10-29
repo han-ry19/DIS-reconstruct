@@ -1,7 +1,7 @@
-# 系统运行脚本
+# Operational scripts
 
-本目录组织 170 上的网络启动、链码部署、服务启动、状态检查和资源清理入口。
+This directory is reserved for network setup, contract deployment, service startup, status checks, and cleanup commands.
 
-脚本服务于同一业务闭环：启动治理后端 → 接通注册与授权接口 → 发布标识记录 → 执行查询验证。各入口应提供明确的配置、退出结果和日志位置，使同一场景能够重复运行。
+Scripts will support the DIS workflow from management requests to DNS resolution, with explicit configuration, exit status, and log locations.
 
-可执行命令统一维护在[运行手册](../docs/runbook.md)中。
+See the [running guide](../docs/runbook.md) for available commands.

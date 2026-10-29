@@ -1,7 +1,7 @@
-# CoreDNS 标识解析
+# CoreDNS deployment
 
-CoreDNS 承担标识管理结果的查询入口：数据标识解析返回绑定属性，授权标识解析返回对应授权记录。
+CoreDNS serves the resolution view of DIS management records. Data identifiers resolve to their registered attributes, and authorization identifiers resolve to the associated authorization records.
 
-本目录组织区域模板、记录编码和服务配置，与同步服务共同衔接已提交状态和 DNS 查询。验收以实际 DNS 响应与目标管理记录一致为依据，并观察提交到可查询之间的发布延迟。
+This directory is reserved for zone templates, record encodings, and server configuration. Together with the synchronization service, these files will connect committed ledger records to DNS responses.
 
-记录映射和加载命令将在发布服务接通时固定，参见[系统架构](../../docs/architecture.md)。
+Publication checks will compare actual DNS responses with the intended committed records. Configuration and startup commands will be documented in the [running guide](../../docs/runbook.md) when the publication service is connected.

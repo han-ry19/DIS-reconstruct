@@ -1,15 +1,17 @@
-# 开发与写作约定
+# Contributor instructions
 
-## 执行环境
+## Project scope
 
-代码、构建、测试、部署和实验统一在 SSH 主机 170 上完成。主工作目录为 /home/hanruoyu/DIS-reconstruct，项目文件归 hanruoyu 用户管理。
+Reconstruct the DIS identifier registration, management, and resolution components described in DIA and Dominate. Use the paper architecture and algorithms to guide Fabric contracts, application interfaces, and CoreDNS synchronization.
 
-## 项目定位
+The lightweight governance system is a separate project. Keep this repository focused on the reconstruction's business semantics and infrastructure.
 
-本仓库重建 DIA／Dominate 中 DIS 的标识注册、管理与解析组件。以论文架构和业务算法为依据，实现 Fabric 管理合约、业务接口和 CoreDNS 同步。用户作出业务决定，Fabric 节点按合约核验并记录状态转换。
+## Development execution
 
-轻量治理方案属于独立研究项目。本仓库的实现目标、README 和架构围绕 DIS 重建组织；新增业务或替换基础机制须与用户确认范围。
+For the current maintainer's agent sessions, run builds, tests, deployments, and experiments on SSH host 170. The checkout is /home/hanruoyu/DIS-reconstruct and belongs to hanruoyu. Local sessions may connect to that host and inspect files.
 
-## 文档原则
+These are maintainer environment instructions. Public usage guides should use repository-relative paths and portable commands.
 
-先讲系统用途、业务价值和使用方式，再提供所需实现细节。原文设计、工程选择与已实现功能准确对应。README 展示项目用途与功能；架构解释组件协作；运行手册维护实现进度、实际命令和运行事实。
+## Documentation
+
+Write Markdown in English. Lead with the system's purpose and business workflow. Describe paper-derived behavior, engineering choices, and implemented functionality accurately. Keep runnable commands and component availability in the running guide.

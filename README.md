@@ -1,48 +1,32 @@
 # DIS-reconstruct
 
-**DIA／Dominate 中 DIS 标识注册与管理系统的重建项目。**
+**Reconstructing the identifier registration, management, and resolution components of DIS described in DIA and Dominate.**
 
-DIA／Dominate 通过身份、数据标识和访问授权连接用户、应用与数据服务：用户登记数据及其属性，应用通过标识获取数据地址，并向所有者申请访问权限。DIS-reconstruct 依据两篇论文的架构和业务流程，重建其中的标识注册、管理与解析组件。
+DIS connects users, applications, and data services through registered identities, resolvable data identifiers, and owner-controlled access authorization. This project translates the architecture and business workflows in DIA and Dominate into an implementation built on Hyperledger Fabric and CoreDNS.
 
-系统采用 Hyperledger Fabric 保存身份、数据标识和授权状态，通过 CoreDNS 提供标识解析。项目目标是将论文描述落实为结构清晰、可部署、可验证的实现。
+## System design
 
-## 核心功能
+The reconstruction covers the following capabilities:
 
-| 功能 | 业务行为 |
+| Capability | Purpose |
 |---|---|
-| 身份注册与查询 | 登记用户或应用的身份与公钥，支持公钥查询 |
-| 数据标识注册 | 创建数据标识，绑定所有者、地址、数据签名和描述 |
-| 数据标识解析 | 根据标识查询关联的数据属性 |
-| 授权申请 | 应用提交权限与到期时间，建立 pending 记录 |
-| 授权决定 | 所有者批准或拒绝申请，更新授权记录 |
-| 授权解析 | 查询授权状态、权限和到期时间 |
-| DNS 同步发布 | 将已提交的标识和授权记录发布到 CoreDNS |
+| Identity registration and lookup | Bind a user or application identity to its public key |
+| Data registration | Bind a data identifier to its owner, address, signature, and profile |
+| Data resolution | Retrieve the attributes associated with a data identifier |
+| Authorization requests | Record an application's requested permissions and expiration time |
+| Owner decisions | Approve or reject a pending request |
+| Authorization resolution | Retrieve authorization status, permissions, and expiration |
+| DNS publication | Publish committed identifier and authorization records through CoreDNS |
 
-以上为重建范围，当前实现进度和运行入口见[运行手册](docs/runbook.md)。
+Users and applications submit requests through the DIS API. Fabric contracts validate and record management operations. A synchronization service projects committed records into DNS zones served by CoreDNS. Original data remains in external data services.
 
-## 系统架构
+## Getting started
 
-用户／应用 → DIS API → Fabric 管理合约 → 账本状态 → 同步发布服务 → CoreDNS。
+Start with the [running guide](docs/runbook.md) to launch the currently available API health endpoint. The repository currently provides domain models, a repository interface, and service entry points; the business transactions and Fabric/CoreDNS integration are under development.
 
-用户和应用表达业务请求，数据所有者决定访问授权。Fabric 节点执行管理合约，并通过背书、排序和校验共同记录状态更新。同步服务将已提交记录转换为 DNS 解析数据。
+## Documentation
 
-原始数据保存在外部数据服务中，本项目围绕访问这些数据所需的身份、标识和授权记录构建业务闭环。
-
-## 业务流程
-
-1. 用户和应用分别注册身份。
-2. 用户登记数据地址、签名和描述，取得数据标识。
-3. 应用解析数据属性并提交授权申请。
-4. 所有者批准或拒绝申请。
-5. 客户端查询对应的授权记录。
-
-## 文档
-
-| 文档 | 内容 |
-|---|---|
-| [系统架构](docs/architecture.md) | 管理合约、查询接口和 DNS 同步 |
-| [原文与实现映射](docs/dia-mapping.md) | DIA／Dominate 概念与重建模块的对应 |
-| [设计决策](docs/decisions.md) | 论文算法的工程实现选择 |
-| [运行手册](docs/runbook.md) | 170 环境、实现进度与运行命令 |
-
-开发、构建、测试和部署统一在 170 的 /home/hanruoyu/DIS-reconstruct 中进行。
+- [Architecture](docs/architecture.md)
+- [Mapping to DIA and Dominate](docs/dia-mapping.md)
+- [Implementation decisions](docs/decisions.md)
+- [Running guide](docs/runbook.md)

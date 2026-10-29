@@ -1,21 +1,21 @@
-# 论文算法的工程实现选择
+# Implementation decisions
 
-## 确定性数据登记
+## Deterministic data registration
 
-DIA 的数据注册算法使用 UUID 创建数据标识。重建时由客户端生成 UUID 候选并绑定到请求，链码核验格式与唯一性，使多个背书节点对同一输入产生一致结果。
+DIA's registration algorithm creates a data identifier using a UUID. In this reconstruction, the client supplies a UUID candidate bound to the request. The contract checks its format and uniqueness so endorsing peers can produce consistent results from the same input.
 
-## 用户授权与 Fabric 背书
+## Owner decisions and Fabric endorsement
 
-所有者决定应用的访问权限。Fabric 节点按合约检查请求者身份、操作权限和状态条件，并背书执行结果。业务授权和基础设施确认分别落实在接口与交易流程中。
+The data owner decides an application's access permissions. Fabric peers check requester identity, permissions, and state conditions under the contracts and endorse the execution result. The API and transaction workflow preserve these distinct responsibilities.
 
-## 一致的时间输入
+## Consistent time inputs
 
-签发与到期时间采用交易内一致的输入。实现时定义时间来源与校验规则，使授权记录的生成和解释一致。
+Issuance and expiration fields use inputs shared within the transaction. Their source and validation rules are to be specified with the authorization implementation so peers interpret the same record consistently.
 
-## 账本到 DNS 的同步
+## Ledger-to-DNS synchronization
 
-参照原文的周期同步思路，发布服务读取已提交状态，生成对应区域记录。运行检查分别确认账本结果和 DNS 响应。
+Following the periodic synchronization approach in the papers, the publication service reads committed records and generates DNS zone data. Operational checks distinguish ledger results from DNS responses.
 
-## 业务范围
+## Business scope
 
-本次重建实现身份注册与查询、数据标识登记与解析、授权申请与决定。原始数据通过地址与外部数据服务关联。接口、配置与验收围绕这一业务闭环展开。
+The reconstruction covers identity registration and lookup, data registration and resolution, and authorization requests and decisions. Data addresses connect these records to external data services. Interfaces, configuration, and acceptance scenarios follow this workflow.

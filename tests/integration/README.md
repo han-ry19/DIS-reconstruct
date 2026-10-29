@@ -1,9 +1,10 @@
-# 组件协作验证
+# Integration verification
 
-集成验证聚焦请求、治理和发布之间的连接，承担三个职责：
+Integration tests will check the boundaries between requests, contracts, ledger state, and publication:
 
-- 验证用户签名和权限条件贯穿 API 与链码执行。
-- 验证有效提交产生预期管理记录，冲突和重复请求遵循既定业务语义。
-- 验证同步服务发布的 DNS 记录对应已提交状态。
+- Request signatures and permissions are checked through the API and contract path.
+- Valid transactions produce the expected management records.
+- Conflicting and repeated requests follow the defined business semantics.
+- Published DNS records match committed state.
 
-用例随相关组件接通而加入。验证输入与预期结果由业务合同定义。
+Test inputs and expected outcomes will follow the business contracts as the components are connected.

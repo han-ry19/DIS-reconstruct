@@ -1,7 +1,7 @@
-# Fabric 部署
+# Fabric deployment
 
-本目录组织 DIS 重建所需的 Fabric 网络，将身份注册、数据登记和授权决定交由管理合约执行并保存。
+This directory is reserved for the Fabric configuration used by the DIS reconstruction: organizations and MSPs, peers, orderers, the application channel, contract lifecycle, and endorsement policy.
 
-配置覆盖机构与 MSP、peer、orderer、业务 channel、链码生命周期和背书策略。部署参数需记录其原文依据及工程选择，使系统能够重复搭建。
+The deployment workflow will install the management contracts, submit business requests, collect matching endorsements, confirm valid commits, and query the resulting records.
 
-验收路径为：部署合约 → 提交业务请求 → 收集匹配背书 → 确认有效提交 → 查询管理记录。实际部署命令维护在[运行手册](../../docs/runbook.md)中。
+Deployment parameters will document their relationship to the paper configuration and the engineering choices used here. Runnable setup instructions will be added to the [running guide](../../docs/runbook.md) with the network implementation.

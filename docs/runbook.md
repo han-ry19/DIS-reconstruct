@@ -1,26 +1,63 @@
-# 170 开发与运行手册
+# Running DIS-reconstruct
 
-## 工作目录
+This guide explains how to obtain the source, check the Go packages, and start the available API endpoint.
 
-- SSH 主机：170
-- 项目目录：/home/hanruoyu/DIS-reconstruct
-- 项目用户：hanruoyu
-- 远程仓库：git@github.com:han-ry19/DIS-reconstruct.git
+## Requirements
 
-代码构建、测试、部署和实验统一在 170 执行。
+- Git
+- Go 1.22 or later
+- curl for the health check
+- An available TCP port 8080
 
-## 开发入口
+## Get the source
 
-在 170 登录项目用户后执行：
+```bash
+git clone https://github.com/han-ry19/DIS-reconstruct.git
+cd DIS-reconstruct
+```
 
-    cd /home/hanruoyu/DIS-reconstruct
-    GOTOOLCHAIN=local /usr/bin/go test ./...
-    GOTOOLCHAIN=local /usr/bin/go run ./cmd/dis-api
+Run the following commands from the repository root.
 
-API 当前提供 /healthz 健康检查，默认监听 8080 端口。当前代码包含领域模型、仓储接口及服务入口骨架；CLI、同步服务和链码业务接口待接通。Go 包编译检查已通过，目前没有自动化测试用例。
+## Check the packages
 
-## 系统接通顺序
+```bash
+go test ./...
+```
 
-身份注册与公钥查询 → 数据登记 → 授权申请与决定 → Fabric 提交 → CoreDNS 同步 → 完整业务用例。
+This checks that the current packages compile. Automated test cases will accompany the business implementation.
 
-每一步围绕相同业务场景接通，并在运行文档中补充实际命令和验收结果。
+## Start the API
+
+```bash
+go run ./cmd/dis-api
+```
+
+The API listens on port 8080. Keep this terminal running and open another terminal for the health check:
+
+```bash
+curl --fail --silent --show-error http://localhost:8080/healthz
+```
+
+Expected response:
+
+```json
+{"Status":"ok"}
+```
+
+Stop the API with Ctrl+C.
+
+## Available functionality
+
+The current executable API provides the health endpoint. Identity, data, and authorization models and the repository interface define the business objects. The CLI, synchronization service, and chaincode directory provide entry points for the business implementation.
+
+Fabric deployment, management transactions, and CoreDNS publication will receive runnable instructions as those components are connected. The [architecture](architecture.md) describes their intended interaction.
+
+## Troubleshooting
+
+If startup reports that port 8080 is already in use, stop the conflicting service or use an environment where the port is available.
+
+If Go reports an unsupported module version, check your active installation with the following command:
+
+```bash
+go version
+```
