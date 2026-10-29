@@ -1,10 +1,100 @@
 openapi: 3.0.3
 info:
-  title: DIS-reconstruct API
-  version: 0.1.0
+  title: DIS-reconstruct development API
+  version: 0.2.0
+  description: Signed DIS business operations using the single-process file backend.
+servers:
+  - url: http://localhost:8080
 paths:
   /healthz:
     get:
       responses:
-        "200":
-          description: OK
+        '200':
+          description: API status and active backend
+  /v1/transactions:
+    post:
+      summary: Submit a signed management operation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Request'
+      responses:
+        '200':
+          description: Committed result or the original result for an exact retry
+        '400':
+          description: Invalid parameters or timestamp
+        '403':
+          description: Invalid signature or insufficient permission
+        '404':
+          description: Referenced record does not exist
+        '409':
+          description: Conflicting identifier or request ID
+  /v1/identities/{id}:
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200': {description: Registered identity and public key}
+        '404': {description: Identity not found}
+  /v1/data/{id}:
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200': {description: Registered data attributes}
+        '404': {description: Data not found}
+  /v1/authorizations:
+    get:
+      parameters:
+        - {name: data_id, in: query, required: true, schema: {type: string}}
+        - {name: owner_id, in: query, required: true, schema: {type: string}}
+        - {name: recipient, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Authorization record}
+        '404': {description: Authorization not found}
+components:
+  schemas:
+    Request:
+      type: object
+      additionalProperties: false
+      required: [domain, operation, actor, request_id, timestamp, parameters, signature]
+      properties:
+        domain: {type: string}
+        operation:
+          type: string
+          enum: [identity.register, data.register, authorization.request, authorization.decide]
+        actor: {type: string}
+        request_id: {type: string}
+        timestamp: {type: integer, format: int64, description: Unix seconds}
+        parameters:
+          type: object
+          additionalProperties: false
+          properties:
+            identity_id: {type: string}
+            public_key: {type: string, description: Base64 Ed25519 public key}
+            kind: {type: string, enum: [user, application]}
+            data_id: {type: string}
+            address: {type: string}
+            data_signature: {type: string}
+            profile:
+              type: object
+              additionalProperties: false
+              properties:
+                label: {type: string}
+                format: {type: string}
+                description: {type: string}
+            recipient: {type: string}
+            permissions:
+              type: array
+              items: {type: string, enum: [Create, Read, Update, Delete]}
+            expires_at: {type: integer, format: int64}
+            status: {type: string, enum: [approved, rejected]}
+        signature: {type: string, description: Base64 Ed25519 request signature}

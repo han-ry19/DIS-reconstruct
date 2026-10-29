@@ -22,7 +22,7 @@ Users and applications submit requests through the DIS API. Fabric contracts val
 
 ## Getting started
 
-Start with the [running guide](docs/runbook.md) to launch the currently available API health endpoint. The repository currently provides domain models, a repository interface, and service entry points; the business transactions and Fabric/CoreDNS integration are under development.
+Follow the [running guide](docs/runbook.md) to run the signed registration and authorization workflow. The development API persists business state and request receipts across restarts. A Fabric shim adapter executes the same business rules; network deployment and DNS publication are the next integration steps.
 
 ## Documentation
 

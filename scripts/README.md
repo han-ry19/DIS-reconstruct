@@ -1,7 +1,12 @@
 # Operational scripts
 
-This directory is reserved for network setup, contract deployment, service startup, status checks, and cleanup commands.
+The process smoke test starts an API on an available loopback port, runs the signed demo, submits a CLI-signed registration, restarts the API, and verifies persisted records. It uses temporary state and stops its processes on completion.
 
-Scripts will support the DIS workflow from management requests to DNS resolution, with explicit configuration, exit status, and log locations.
+Build the binaries and run the test from the repository root (Python 3 is required):
 
-See the [running guide](../docs/runbook.md) for available commands.
+```bash
+go build -o bin/ ./cmd/dis-api ./cmd/dis-cli ./cmd/dis-demo
+python3 scripts/smoke.py
+```
+
+See the [running guide](../docs/runbook.md) for interactive use. Network deployment and DNS lifecycle scripts will accompany those integrations.
