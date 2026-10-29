@@ -22,7 +22,7 @@ Users and applications submit requests through the DIS API. Fabric contracts val
 
 ## Getting started
 
-Follow the [running guide](docs/runbook.md) to run the signed registration and authorization workflow. The development API persists business state and request receipts across restarts. A Fabric shim adapter executes the same business rules; network deployment and DNS publication are the next integration steps.
+Follow the [running guide](docs/runbook.md) to start the Fabric network and CoreDNS services, run the signed registration and authorization workflow, and verify that the authoritative DNS zones match committed records.
 
 ## Documentation
 

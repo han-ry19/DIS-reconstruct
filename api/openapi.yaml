@@ -1,10 +1,13 @@
 openapi: 3.0.3
 info:
-  title: DIS-reconstruct development API
+  title: DIS-reconstruct API
   version: 0.2.0
-  description: Signed DIS business operations using the single-process file backend.
+  description: Signed DIS operations through Fabric or the development file backend.
 servers:
+  - url: http://localhost:28080
+    description: Managed Fabric deployment
   - url: http://localhost:8080
+    description: Direct API process
 paths:
   /healthz:
     get:

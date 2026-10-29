@@ -109,7 +109,7 @@ func Apply(s *State, r Request, now int64) (Result, error) {
 	object := ""
 	switch r.Operation {
 	case "identity.register":
-		if p.IdentityID != r.Actor || (p.Kind != "user" && p.Kind != "application") {
+		if !strings.HasSuffix(r.Actor, ".uid") || strings.Count(r.Actor, ".") != 1 || p.IdentityID != r.Actor || (p.Kind != "user" && p.Kind != "application") {
 			return fail(ErrInvalid)
 		}
 		if _, ok := s.Identities[r.Actor]; ok {
@@ -124,7 +124,7 @@ func Apply(s *State, r Request, now int64) (Result, error) {
 		if actor.Kind != "user" {
 			return fail(ErrUnauthorized)
 		}
-		if !validName(p.DataID) || !strings.HasSuffix(p.DataID, ".data") || p.Profile == nil || e != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || u.User != nil || se != nil || len(contentSig) != ed25519.SignatureSize {
+		if !validName(p.DataID) || !strings.HasSuffix(p.DataID, ".data") || strings.Count(p.DataID, ".") != 1 || p.Profile == nil || e != nil || u.Scheme == "" || u.Host == "" || u.User != nil || se != nil || len(contentSig) != ed25519.SignatureSize {
 			return fail(ErrInvalid)
 		}
 		if _, ok := s.Data[p.DataID]; ok {

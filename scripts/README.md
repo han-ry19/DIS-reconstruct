@@ -10,3 +10,11 @@ python3 scripts/smoke.py
 ```
 
 See the [running guide](../docs/runbook.md) for interactive use. Network deployment and DNS lifecycle scripts will accompany those integrations.
+
+## Connected system acceptance
+
+After starting the Fabric network and connected services, run:
+
+    python3 scripts/acceptance.py --restart
+
+The script verifies a signed business workflow, queries the authorization on all four peers, checks both authoritative DNS zones, restarts the managed components, and repeats the record checks. Results are saved to runtime/acceptance.json. The system is left running for inspection.

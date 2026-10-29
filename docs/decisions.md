@@ -32,4 +32,12 @@ Following DIA Algorithm 2, a newly signed request writes a pending record at the
 
 ## Initial state layout
 
-The development backend persists an atomic JSON state document and uses a single-writer file lock. The initial Fabric adapter stores the document at dis.state.v1 and uses GetState/PutState for the transition. This layout gives a common read/write dependency to updates; per-record ledger keys are an integration task before concurrency performance evaluation.
+The development backend persists an atomic JSON state document and uses a single-writer file lock. The initial Fabric adapter stores the document at dis.state.v1 and uses GetState/PutState for the transition. This layout gives a common read/write dependency to updates; the layout is recorded here so its concurrency behavior can be interpreted when the system is exercised.
+
+## DNS record encoding
+
+The projection follows Dominate's identity CERT/TXT, data RP/URI/TXT, and authorization TXT structure. For Ed25519 key material, CERT type 254 carries an OID-length byte, the DER OID value for 1.3.101.112, and the raw key. Data profiles use a separate _profile TXT name. Full AXFR verification compares all authoritative records, including SOA serials, with the committed snapshot.
+
+## Completion timestamps
+
+The result field committed_at records the execution timestamp used by the transition. In Fabric it is the transaction timestamp; a successful HTTP result additionally requires a valid commit status. It is not an instrumented peer database commit time.

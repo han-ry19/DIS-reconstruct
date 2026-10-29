@@ -1,76 +1,97 @@
 # Running DIS-reconstruct
 
-Run the signed registration and authorization workflow through the development API. The file backend persists single-process business state; the Fabric chaincode adapter uses the same transition rules.
+This guide runs the DIA/Dominate registration and authorization workflow through Fabric and publishes the resulting records through CoreDNS.
 
 ## Requirements
 
+- Linux amd64
 - Git and Go 1.22 or later
-- curl for HTTP checks
-- A Linux host for the file backend's advisory lock
-- An available TCP port (8080 by default)
+- Python 3.9 or later, with venv support
+- Access to GitHub releases and the Go module proxy for dependency downloads
+- Available loopback ports in the 27000–27063 range, plus 28080 and 28530
 
-## Get the source
+## Install and build
 
 ```bash
 git clone https://github.com/han-ry19/DIS-reconstruct.git
 cd DIS-reconstruct
-go test ./...
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install PyYAML
+python scripts/bootstrap.py
+go build -o bin/ ./cmd/dis-api ./cmd/dis-cli ./cmd/dis-demo ./cmd/dis-chaincode ./cmd/dis-sync ./cmd/dis-check
 ```
 
-## Start the API
+The bootstrap script installs Fabric 2.4.9 and CoreDNS 1.12.0 under runtime/tools. Offline release archives can be provided with --archive and --coredns-archive. See the [Fabric setup](../deploy/fabric/README.md) for network details.
+
+## Start the system
 
 ```bash
-go run ./cmd/dis-api -listen 127.0.0.1:8080 -state runtime/state.json -domain dis-local
+python scripts/network.py up
+python scripts/services.py up
 ```
 
-The state file and its lock are created automatically. Restarting with the same state path and domain preserves records and request receipts. Stop the API with Ctrl+C before opening that state file in another API process.
+The network manager creates four peer organizations, four Raft orderers, the dis channel, and the dis chaincode. Any three of the four peer organizations satisfy the business endorsement policy. The service manager starts the API, periodic Fabric-to-DNS synchronization, and CoreDNS.
 
-In another terminal:
+## Run the workflow
 
 ```bash
-curl --fail --silent --show-error http://127.0.0.1:8080/healthz
+bin/dis-demo -url http://127.0.0.1:28080
+bin/dis-sync -fabric-config runtime/fabric/gateway.json -out runtime/dns -once -verify 127.0.0.1:28530
 ```
 
-Expected response:
+The demo creates user and application identities, registers data, requests Read access, records the owner's approval, and queries the authorization. Each run uses fresh identifiers. The verification command checks both authoritative DNS zones against the committed snapshot.
 
-```json
-{"Status":"ok","backend":"file-development"}
-```
-
-## Run the business workflow
-
-From the repository root:
+## Inspect, stop, and restart
 
 ```bash
-go run ./cmd/dis-demo -url http://127.0.0.1:8080 -domain dis-local
+python scripts/services.py status
+python scripts/network.py status
+python scripts/services.py down
+python scripts/network.py down
+python scripts/network.py up
+python scripts/services.py up
 ```
 
-The demo generates temporary user and application identities, registers data, requests Read permission, records the owner's approval, and queries the approved authorization. Each run uses fresh identifiers. Its private keys remain in the demo process.
-
-## Client key generation and signing
-
-```bash
-go run ./cmd/dis-cli keygen -out identity.key
-go run ./cmd/dis-cli sign -key identity.key -request request.json > signed-request.json
-curl --fail-with-body -H 'Content-Type: application/json' --data-binary @signed-request.json http://127.0.0.1:8080/v1/transactions
-```
-
-Key generation prints the Base64 public key and creates a private-key file with owner-only permissions. The signing command reads an unsigned request matching the [API schema](../api/openapi.yaml). Request timestamps use Unix seconds and a five-minute execution window. Exact retries return their recorded result, including after restart.
+Certificates, ledgers, published records, and logs are retained under runtime. Restart uses the saved configuration and records. Managers control only their recorded project processes. Logs are stored under runtime/fabric and runtime/services.
 
 ## Verification
 
 ```bash
 go test -race ./...
 go vet ./...
-go build ./cmd/dis-api ./cmd/dis-cli ./cmd/dis-demo ./cmd/dis-chaincode
+python scripts/acceptance.py --restart
+DIS_FABRIC_CONFIG="$PWD/runtime/fabric/gateway.json" go test -v ./internal/fabric -run TestLiveFabricWorkflow
 ```
 
-Tests cover the HTTP business workflow, signatures, permissions, conflicting requests, repeated submissions, concurrent registration, state rollback, file locking, restart recovery, and the Fabric shim adapter. Shim tests exercise the adapter through Fabric's test stub; network endorsement and commit require a deployed Fabric network.
+The live test exercises real Fabric commits and queries, signature rejection, owner permissions, request conflicts, and retries. Unit and integration tests also cover deterministic transitions, file-store recovery, publication encoding, and stale-publication rejection.
 
-## Component availability
+## Development without a Fabric network
 
-The HTTP development backend, request signing, business workflow, and Fabric shim adapter are implemented. Fabric network deployment and the API's Fabric client connection are the next integration steps. DNS synchronization remains a service entry point, with publication setup to follow.
+The file backend provides a single-process environment for business development:
+
+```bash
+bin/dis-api -listen 127.0.0.1:8080 -state runtime/state.json -domain dis-local
+```
+
+In another terminal:
+
+```bash
+bin/dis-demo -url http://127.0.0.1:8080
+```
+
+## Signing a request
+
+```bash
+bin/dis-cli keygen -out identity.key
+bin/dis-cli sign -key identity.key -request request.json > signed-request.json
+curl --fail-with-body -H 'Content-Type: application/json' --data-binary @signed-request.json http://127.0.0.1:28080/v1/transactions
+```
+
+Key generation prints the public key and writes a private key with owner-only permissions. Requests follow the [API schema](../api/openapi.yaml). Exact retries return the original result; reuse of the same actor/request ID for a different payload is rejected.
 
 ## Troubleshooting
 
-A state-lock error indicates another process is using that state file. An address-in-use error indicates a conflict on the selected port; choose another with -listen and pass its URL to the demo. An invalid timestamp response requires a fresh signed request and a correctly configured host clock.
+An address-in-use error requires another initial port base or stopping the conflicting service. A state-lock error means another process is using that development state file. A timestamp error requires a fresh signed request and a correctly configured clock.
+
+If a component exits, inspect its log before restarting. Stop the services before stopping the Fabric network. For an interrupted initial deployment, inspect the saved phase and commands.log under runtime/fabric.

@@ -26,7 +26,13 @@ func main() {
 func run() error {
 	endpoint := flag.String("url", "http://127.0.0.1:8080", "DIS API URL")
 	network := flag.String("domain", "dis-local", "Request domain")
+	transcript := flag.String("transcript", "", "Write signed requests and committed results for replay verification")
 	flag.Parse()
+	type step struct {
+		Request domain.Request `json:"request"`
+		Result  domain.Result  `json:"result"`
+	}
+	steps := []step{}
 	var random [8]byte
 	if _, e := rand.Read(random[:]); e != nil {
 		return e
@@ -65,6 +71,11 @@ func run() error {
 		if response.StatusCode != 200 {
 			return fmt.Errorf("%s: %s %s", op, response.Status, body)
 		}
+		var committed domain.Result
+		if e = json.Unmarshal(body, &committed); e != nil {
+			return e
+		}
+		steps = append(steps, step{Request: req, Result: committed})
 		fmt.Printf("%s: %s", op, body)
 		return nil
 	}
@@ -95,6 +106,15 @@ func run() error {
 	}
 	if response.StatusCode != 200 || record.Status != domain.AuthorizationApproved {
 		return fmt.Errorf("unexpected authorization result")
+	}
+	if *transcript != "" {
+		encoded, e := json.MarshalIndent(steps, "", "  ")
+		if e != nil {
+			return e
+		}
+		if e = os.WriteFile(*transcript, encoded, 0600); e != nil {
+			return e
+		}
 	}
 	fmt.Println("Authorization lookup:")
 	return json.NewEncoder(os.Stdout).Encode(record)

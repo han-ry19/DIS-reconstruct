@@ -3,22 +3,24 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"github.com/han-ry19/DIS-reconstruct/internal/backend"
 	"github.com/han-ry19/DIS-reconstruct/internal/domain"
 	"io"
 	"net/http"
-	"time"
 )
 
 type Server struct {
-	Store domain.Store
-	Now   func() time.Time
+	Store backend.Backend
 }
 
 func New(store domain.Store) http.Handler {
-	s := &Server{Store: store, Now: time.Now}
+	return NewBackend(backend.Development{Store: store})
+}
+func NewBackend(store backend.Backend) http.Handler {
+	s := &Server{Store: store}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
-		write(w, 200, map[string]string{"Status": "ok", "backend": "file-development"})
+		write(w, 200, map[string]string{"Status": "ok", "backend": store.Name()})
 	})
 	mux.HandleFunc("POST /v1/transactions", s.submit)
 	mux.HandleFunc("GET /v1/identities/{id}", s.identity)
@@ -63,7 +65,7 @@ func (s *Server) submit(w http.ResponseWriter, r *http.Request) {
 		problem(w, domain.ErrInvalid)
 		return
 	}
-	result, err := s.Store.Update(func(state *domain.State) (domain.Result, error) { return domain.Apply(state, req, s.Now().Unix()) })
+	result, err := s.Store.Submit(req)
 	if err != nil {
 		problem(w, err)
 		return
