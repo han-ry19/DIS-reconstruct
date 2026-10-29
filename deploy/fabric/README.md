@@ -1,3 +1,7 @@
-# Fabric deployment
+# Fabric 共同治理后端
 
-This directory will hold reproducible organizations, channel, peers, orderers, chaincode lifecycle, and endorsement policy configuration.
+本目录负责组织多机构共同维护的标识管理网络，将身份注册、数据登记和授权决定映射为可核验的账本更新。
+
+部署配置覆盖机构与 MSP、peer、orderer、业务 channel、链码生命周期及背书策略。机构规模和背书门槛将作为显式配置，支持在相同业务负载下评价治理成本。
+
+接通后的验收路径是：部署合约 → 提交带业务签名的请求 → 收集匹配背书 → 确认有效提交 → 查询已提交记录。部署命令随网络实现维护在[运行手册](../../docs/runbook.md)中。

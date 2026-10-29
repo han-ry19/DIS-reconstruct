@@ -1,6 +1,15 @@
-# Working environment
+# 开发与写作约定
 
-Build, test, deployment and experiments run only on SSH host 170.
-Canonical checkout: /home/hanruoyu/DIS-reconstruct.
-Do not build or run experiments on the local Mac.
-This checkout currently contains a skeleton; unfinished services must be labelled as such.
+## 执行环境
+
+代码、构建、测试、部署和实验统一在 SSH 主机 170 上完成。主工作目录为 /home/hanruoyu/DIS-reconstruct，项目文件归 hanruoyu 用户管理。
+
+## 系统主线
+
+沿 DIA／Dominate 的身份、数据标识和授权管理语义，连接多机构共同确认与 CoreDNS 解析。用户作出业务决定，参与机构核验状态转换。Fabric 提供首个治理后端。
+
+## 文档原则
+
+围绕值得研究的问题、系统的明确价值和支撑它的证据组织文档。先讲问题与解法，再给理解和运行所需的细节。继承内容、设计目标与已验证结果准确对应。
+
+README 聚焦研究价值与阅读入口；架构文档解释机制；运行手册集中维护实现进度、可执行命令和运行事实。实验围绕机制有效性、优势来源及目标场景组织，性能结论引用实际结果。

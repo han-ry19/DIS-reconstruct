@@ -1,7 +1,38 @@
 # DIS-reconstruct
 
-A runnable reconstruction of the DIA/Dominate identifier registration and authorization path.
+**面向多机构共同治理的 DNS 标识管理系统。**
 
-First milestone: identity registration, data identifier registration, authorization request/decision, committed-state projection to CoreDNS, and a replaceable governance backend with Fabric as baseline.
+跨应用的数据使用需要稳定的身份、可解析的数据标识，以及由数据所有者控制的访问授权。DIS-reconstruct 沿着 DIA／Dominate 的研究路线，将这些管理操作组织为多个机构共同维护的状态，并通过 CoreDNS 提供标准 DNS 解析。
 
-This is a research reimplementation, not source-level recovery of the unavailable original DIS implementation. See docs/dia-mapping.md.
+项目聚焦一个核心问题：**如何在保持多机构共同控制与高效 DNS 解析的同时，降低标识管理更新的治理成本？**
+
+围绕这一问题，系统设计贯通用户签名、业务规则核验、Fabric 共同确认和 DNS 发布，为轻量治理机制提供统一的业务与评测基础。
+
+## 系统主线
+
+用户与应用登记身份 → 所有者登记数据 → 应用申请权限 → 所有者作出决定 → 已提交记录发布到 DNS。
+
+管理更新沿共同治理与发布路径推进：
+
+用户签名请求 → 合约核验 → 多机构背书 → 排序与提交 → 区域记录发布 → DNS 查询可见。
+
+数据所有者决定访问权限；参与机构按照共同规则核验和确认状态转换。这一职责分工贯穿接口、合约与解析记录。
+
+## 研究价值
+
+- **连贯的标识管理语义：**身份、数据属性与授权记录共同支撑跨应用的数据使用。
+- **完整的更新路径：**将账本提交与 DNS 可见连接起来，直接观察管理操作的最终效果。
+- **统一的比较基础：**在固定业务规则、请求负载和 DNS 发布职责的条件下，比较治理机制的执行成本。
+
+Fabric 是首个治理后端，CoreDNS 承担解析服务。后续轻量治理机制沿用相同业务接口与发布流程，其收益由对应实验验证。
+
+## 阅读与使用
+
+| 文档 | 内容 |
+|---|---|
+| [系统架构](docs/architecture.md) | 组件、职责与更新路径 |
+| [DIA／Dominate 继承关系](docs/dia-mapping.md) | 文献概念与项目模块的对应 |
+| [设计决策](docs/decisions.md) | 确定性执行、身份与完成语义 |
+| [运行手册](docs/runbook.md) | 170 开发环境、可执行命令与当前实现入口 |
+
+代码、构建和实验统一在 170 的 /home/hanruoyu/DIS-reconstruct 中进行。

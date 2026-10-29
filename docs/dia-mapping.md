@@ -1,15 +1,30 @@
-# DIA/Dominate mapping
+# 沿着 DIA／Dominate 的系统主线推进
 
-We reconstruct the identifier-management path described in DIA and extended by Dominate. This is not a claim of source-level recovery.
+DIA 将身份、数据标识与访问授权组织为支撑跨应用数据使用的基础能力。Dominate 延续这一结构，扩展了管理与发现服务。DIS-reconstruct 聚焦其中的标识注册与管理路径，以 Fabric 和 CoreDNS 建立共同治理与解析服务之间的连接。
 
-Paper concept -> component -> first milestone:
+## 继承关系
 
-- Identity Management -> identity operations and API -> register and resolve public key.
-- Identifier Management -> data identifier operations -> register and resolve owner, address, signature, and profile.
-- Authorization Management -> pending request and owner decision -> request, approve/reject, resolve.
-- Blockchain platform -> replaceable governance backend -> Fabric baseline first.
-- Identifier System -> sync service and CoreDNS -> project committed state to DNS.
-- DIS-hub -> dis-api -> HTTP entry point.
-- PDS and ERDAP -> external or future boundary -> out of scope initially.
+| 文献中的能力 | 本项目的设计落点 | 服务的业务目的 |
+|---|---|---|
+| 身份管理与身份查询 | 身份合约、请求验签、公钥查询 | 确认请求者及其权限归属 |
+| 数据标识管理 | 数据登记及属性查询 | 将数据绑定到稳定、可解析的标识 |
+| 授权管理 | 申请与所有者决定 | 表达应用请求和所有者的访问决定 |
+| 区块链平台 | Fabric 治理后端 | 共同核验并记录状态转换 |
+| 标识解析系统 | 同步发布与 CoreDNS | 将已提交记录提供给解析客户端 |
+| Dominate 的 DIS-hub 接入方式 | DIS API | 提供一致的业务入口 |
 
-Owner authorization and organization endorsement are separate. The owner expresses the business decision; participating organizations verify that the request and state transition satisfy the shared contract.
+## 连贯的业务场景
+
+1. 用户和应用分别注册身份。
+2. 用户登记数据地址、签名和描述，取得数据标识。
+3. 应用通过标识取得数据属性，并提出访问申请。
+4. 所有者签署批准或拒绝决定。
+5. 更新经共同确认后发布，客户端查询对应记录。
+
+应用申请产生 pending 状态，所有者决定将其更新为 approved 或 rejected。机构背书核验这次转换是否满足合约规则。
+
+## 对后续研究的支撑
+
+项目依据论文中的架构与业务算法重新实现上述路径。其作用是固定标识管理任务，让后续研究能够直接比较共同治理的交互、材料、计算和发布成本。
+
+DIA 原文依据：第三节的系统组件与交互流程、Algorithm 1—3，以及第四节的 Fabric／CoreDNS 实现。Dominate 对应依据：系统设计与第八节的实现及评价。具体编码、标识生成和时间输入选择记录在[设计决策](decisions.md)中。

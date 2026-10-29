@@ -1,3 +1,25 @@
-# Architecture
+# 系统架构
 
-Four layers: client/API; replaceable governance backend; committed management state; identifier resolution through CoreDNS. The research comparison can replace only the governance layer while keeping business contracts and DNS projection fixed.
+DIS-reconstruct 的架构围绕一条完整路径展开：**将用户表达的管理意愿，转换为多个机构共同确认、可通过 DNS 解析的标识状态。**
+
+## 业务入口
+
+用户和应用通过客户端签署请求，经 API 提交。身份注册建立标识与公钥的绑定；数据注册绑定所有者、数据地址、数据签名和描述；授权申请与所有者决定形成可查询的访问授权记录。
+
+## 共同治理
+
+Fabric 后端承载身份、标识和授权管理合约。背书节点依据共同规则模拟执行，客户端取得满足策略的匹配背书后提交排序，peer 校验交易并更新账本。
+
+业务接口与治理后端分层，使后续机制能够沿用相同的业务输入、状态转换和发布目标。
+
+## 标识发布
+
+同步服务的设计职责是读取已提交状态，将数据属性和授权记录映射为 DNS 资源记录，生成区域文件并交给 CoreDNS 加载。身份查询接口提供已登记公钥的查询入口。
+
+用户持有私钥，账本记录身份、公钥与管理状态，CoreDNS 提供这些状态的解析视图。原始数据由外部数据存储服务保管。
+
+## 完成语义
+
+一次管理操作需要分别观察交易提交与 DNS 可见：前者确认共同状态已经持久记录，后者确认更新已经进入解析服务。端到端评价以用户提交到目标记录可查询的路径为依据。
+
+本文档描述组件设计；各入口的实现情况见[运行手册](runbook.md)。

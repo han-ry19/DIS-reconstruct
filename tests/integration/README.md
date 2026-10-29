@@ -1,3 +1,9 @@
-# Integration tests
+# 组件协作验证
 
-Fabric-backed tests will be added after the baseline network is wired.
+集成验证聚焦请求、治理和发布之间的连接，承担三个职责：
+
+- 验证用户签名和权限条件贯穿 API 与链码执行。
+- 验证有效提交产生预期管理记录，冲突和重复请求遵循既定业务语义。
+- 验证同步服务发布的 DNS 记录对应已提交状态。
+
+用例随相关组件接通而加入。验证输入与预期结果由业务合同定义。
