@@ -30,3 +30,4 @@ Follow the [running guide](docs/runbook.md) to start the Fabric network and Core
 - [Mapping to DIA and Dominate](docs/dia-mapping.md)
 - [Implementation decisions](docs/decisions.md)
 - [Running guide](docs/runbook.md)
+- [System verification](docs/verification.md)
