@@ -1,1 +1,3 @@
-module github.com/hanruoyu/DIS-reconstruct\n\ngo 1.22\n
+module github.com/hanruoyu/DIS-reconstruct
+
+go 1.22
