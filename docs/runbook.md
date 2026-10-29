@@ -1,0 +1,1 @@
+# Development runbook\n\ngo test ./...\ngo run ./cmd/dis-api\n

@@ -1,0 +1,1 @@
+openapi: 3.0.3\ninfo:\n  title: DIS-reconstruct API\n  version: 0.1.0\npaths:\n  /healthz:\n    get:\n      responses:\n        "200":\n          description: OK\n

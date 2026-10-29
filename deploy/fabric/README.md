@@ -1,0 +1,1 @@
+# Fabric deployment\n\nThis directory will hold reproducible organizations, channel, peers, orderers, chaincode lifecycle, and endorsement policy configuration.\n

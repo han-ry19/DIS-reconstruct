@@ -1,0 +1,1 @@
+package main\nimport "fmt"\nfunc main(){fmt.Println("dis-cli: identity, identifier, and authorization commands will be added")}\n
