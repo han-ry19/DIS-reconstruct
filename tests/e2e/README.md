@@ -1,1 +1,3 @@
-# End-to-end tests\n\nThe first scenario follows the complete DIA flow.\n
+# End-to-end tests
+
+The first scenario follows the complete DIA flow.

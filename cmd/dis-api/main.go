@@ -1,1 +1,19 @@
-package main\nimport ("encoding/json"; "log"; "net/http")\ntype healthResponse struct { Status string }\nfunc main(){ mux:=http.NewServeMux(); mux.HandleFunc("/healthz",func(w http.ResponseWriter,_ *http.Request){w.Header().Set("Content-Type","application/json"); _=json.NewEncoder(w).Encode(healthResponse{Status:"ok"})}); log.Println("DIS API listening on :8080"); log.Fatal(http.ListenAndServe(":8080",mux)) }\n
+package main
+
+import (
+	"encoding/json"
+	"log"
+	"net/http"
+)
+
+type healthResponse struct{ Status string }
+
+func main() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(healthResponse{Status: "ok"})
+	})
+	log.Println("DIS API listening on :8080")
+	log.Fatal(http.ListenAndServe(":8080", mux))
+}

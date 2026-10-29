@@ -1,1 +1,3 @@
-# Architecture\n\nFour layers: client/API; replaceable governance backend; committed management state; identifier resolution through CoreDNS. The research comparison can replace only the governance layer while keeping business contracts and DNS projection fixed.\n
+# Architecture
+
+Four layers: client/API; replaceable governance backend; committed management state; identifier resolution through CoreDNS. The research comparison can replace only the governance layer while keeping business contracts and DNS projection fixed.
