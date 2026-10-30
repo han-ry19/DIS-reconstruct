@@ -2,9 +2,9 @@
 """Manage the DIS API, committed-event publisher, Redis, and CoreDNS."""
 import argparse,fcntl,json,os,signal,socket,subprocess,time,urllib.request
 from pathlib import Path
-from network import stamp,live
+from network import stamp,live,RUNTIME
 ROOT=Path(__file__).resolve().parents[1]
-WORK=ROOT/'runtime/services'
+WORK=RUNTIME/'services'
 def main():
  parser=argparse.ArgumentParser();parser.add_argument('action',choices=['up','down','status']);parser.add_argument('--api-port',type=int,default=28080);parser.add_argument('--dns-port',type=int,default=28530);parser.add_argument('--redis-port',type=int,default=28679);args=parser.parse_args()
  WORK.mkdir(parents=True,exist_ok=True)
@@ -28,10 +28,10 @@ def main():
    m['processes'][name]={'pid':p.pid,'start':stamp(p.pid)};save()
   if args.action=='status':print(json.dumps(dict(api_port=m['api_port'],dns_port=m['dns_port'],redis_port=m['redis_port'],processes={name:live(p) for name,p in m['processes'].items()}),indent=2));return
   if args.action=='down':stop();return
-  dns=ROOT/'runtime/dns';profile=ROOT/'runtime/fabric/gateway.json'
+  dns=RUNTIME/'dns';profile=RUNTIME/'fabric/gateway.json'
   sync=[ROOT/'bin/dis-sync','-fabric-config',profile,'-out',dns,'-redis',f'127.0.0.1:{m["redis_port"]}']
   try:
-   redisdir=ROOT/'runtime/redis';redisdir.mkdir(parents=True,exist_ok=True)
+   redisdir=RUNTIME/'redis';redisdir.mkdir(parents=True,exist_ok=True)
    spawn('redis',[ROOT/'runtime/tools/redis-7.2.5/src/redis-server','--bind','127.0.0.1','--port',m['redis_port'],'--dir',redisdir,'--appendonly','yes','--appendfsync','always','--save',''])
    deadline=time.monotonic()+15
    while True:

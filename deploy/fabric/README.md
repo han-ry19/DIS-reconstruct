@@ -1,6 +1,6 @@
 # Fabric network
 
-The native Linux deployment runs four peer organizations, one peer per organization, and four Raft orderers in a separate ordering organization. The application channel and chaincode are named dis. The business endorsement policy requires any three of the four peer organizations.
+The default native Linux deployment runs four peer organizations, one peer per organization, and four Raft orderers in a separate ordering organization. Topology files configure other organization, peer, orderer, endorsement, and machine counts; see the [experiment deployment guide](../../docs/experiment-deployment.md). The application channel and chaincode are named dis. The business endorsement policy requires any three of the four peer organizations.
 
 Peer and orderer traffic uses TLS. Each peer connects to its own external chaincode process on loopback. Generated development MSP identities and durable ledgers are stored under runtime/fabric.
 
@@ -17,7 +17,7 @@ python3 scripts/network.py up
 
 The bootstrap script downloads the official Fabric 2.4.9 release. A previously downloaded archive can be supplied with --archive and an expected checksum with --sha256. FABRIC_CFG_PATH is set by the network manager for each component.
 
-By default the manager reserves ports in the 27000–27063 range; use --port-base on initial setup to choose another range. All listeners bind to loopback. The manager writes logs, certificates, ledger data, and gateway.json beneath runtime/fabric.
+On a new deployment, --port-base or the topology file selects the Fabric port range. Peer and orderer endpoints are advertised using the configured host addresses. External chaincode, operations, and administration endpoints use loopback. The manager writes logs, certificates, ledger data, and gateway.json beneath DIS_RUNTIME/fabric; DIS_RUNTIME defaults to runtime in the checkout.
 
 ## Run the API and demo
 

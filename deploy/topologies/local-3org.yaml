@@ -1,0 +1,8 @@
+organizations: 3
+peers_per_organization: 2
+orderers: 3
+endorsement_threshold: 2
+port_base: 17000
+hosts:
+  local:
+    address: 127.0.0.1

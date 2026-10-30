@@ -1,0 +1,16 @@
+organizations: 3
+peers_per_organization: 2
+orderers: 3
+endorsement_threshold: 2
+port_base: 21000
+hosts:
+  controller:
+    address: controller.example.org
+  worker:
+    address: worker.example.org
+    ssh: experiment@worker.example.org
+    root: /home/experiment/dis-runs/two-host
+# Peers are listed in organization order: Org0/peer0, Org0/peer1, Org1/peer0, ...
+placement:
+  peers: [controller, worker, controller, worker, controller, worker]
+  orderers: [controller, worker, controller]

@@ -2,10 +2,10 @@
 """Verify event catch-up while the publisher is offline, without a full refresh."""
 import fcntl,json,os,signal,subprocess,time
 from pathlib import Path
-from network import ROOT,WORK,stamp,live
+from network import ROOT,WORK,RUNTIME,stamp,live
 
 def main():
- servicesdir=ROOT/'runtime/services'
+ servicesdir=RUNTIME/'services'
  with (servicesdir/'manager.lock').open('a') as lock:
   fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
   path=servicesdir/'services.json';m=json.loads(path.read_text());old=m['processes']['sync']
@@ -15,7 +15,7 @@ def main():
   while live(old):
    if time.monotonic()>deadline:raise RuntimeError('Publisher did not stop')
    time.sleep(.1)
-  args=[ROOT/'bin/dis-sync','-fabric-config',WORK/'gateway.json','-redis',f'127.0.0.1:{m["redis_port"]}','-out',ROOT/'runtime/dns']
+  args=[ROOT/'bin/dis-sync','-fabric-config',WORK/'gateway.json','-redis',f'127.0.0.1:{m["redis_port"]}','-out',RUNTIME/'dns']
   def check():return subprocess.run([str(v) for v in args]+['-check','-verify',f'127.0.0.1:{m["dns_port"]}'],capture_output=True,text=True)
   try:
    subprocess.run([str(ROOT/'bin/dis-demo'),'-url',f'http://127.0.0.1:{m["api_port"]}'],check=True,capture_output=True,text=True)
@@ -30,5 +30,5 @@ def main():
    if not live(m['processes']['sync']) or time.monotonic()>deadline:raise RuntimeError(result.stderr)
    time.sleep(.2)
   report={'offline_commits':'passed','checkpoint_catch_up':'passed','authoritative_dns':'passed'}
-  (ROOT/'runtime/acceptance-events.json').write_text(json.dumps(report,indent=2));print(json.dumps(report,indent=2))
+  (RUNTIME/'acceptance-events.json').write_text(json.dumps(report,indent=2));print(json.dumps(report,indent=2))
 if __name__=='__main__':main()

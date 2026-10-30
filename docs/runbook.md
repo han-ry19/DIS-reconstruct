@@ -9,7 +9,7 @@ This guide runs the Data Interoperating Architecture (DIA): Decoupling Data and 
 - A C compiler and make for Redis
 - Python 3.9 or later, with venv support
 - Access to GitHub releases and the Go module proxy for dependency downloads
-- Available loopback ports in the 27000–27063 range, plus 28080, 28530, and 28679
+- Available ports for the chosen Fabric topology, plus the API, DNS, and Redis service ports
 
 ## Install and build
 
@@ -32,7 +32,9 @@ python scripts/network.py up
 python scripts/services.py up
 ```
 
-The network manager creates four peer organizations, four Raft orderers, the dis channel, and the dis chaincode. Any three of the four peer organizations satisfy the business endorsement policy. The service manager starts the API, committed Fabric event publication to Redis, and CoreDNS.
+By default, the network manager creates four peer organizations, one peer per organization, four Raft orderers, the dis channel, and the dis chaincode. Any three of the four peer organizations satisfy the business endorsement policy. The service manager starts the API, committed Fabric event publication to Redis, and CoreDNS.
+
+For other node counts and deployments across machines, use a topology file and a separate DIS_RUNTIME as described in the [experiment deployment guide](experiment-deployment.md).
 
 ## Run the workflow
 
@@ -61,7 +63,7 @@ Certificates, ledgers, published records, and logs are retained under runtime. R
 ```bash
 go test -race ./...
 go vet ./...
-python scripts/acceptance.py --restart
+python scripts/acceptance.py --restart --all-gateways
 python scripts/acceptance-events.py
 DIS_FABRIC_CONFIG="$PWD/runtime/fabric/gateway.json" go test -v ./internal/fabric -run TestLiveFabricWorkflow
 ```

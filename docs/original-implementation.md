@@ -31,7 +31,7 @@ The publisher holds the projection in memory, computes a complete-state digest, 
 
 The CoreDNS plugin serves the uid and data zones with A, NS, SOA, CERT, RP, URI, and TXT records. The SOA serial follows the business sequence, and large AXFR responses span multiple DNS messages.
 
-The supplied deployment runs four peer organizations with a three-organization endorsement threshold and four Raft orderers.
+The default deployment runs four peer organizations with a three-organization endorsement threshold and four Raft orderers. Topology files configure other scales and machine placements.
 
 ## In-place migration
 
