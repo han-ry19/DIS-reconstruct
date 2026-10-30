@@ -16,7 +16,14 @@ def main():
   for i in range(4):
    body=run([BIN/'peer','chaincode','query','-C','dis','-n','dis','-c',json.dumps({'Args':['GetAuthorization',record['data_id'],record['owner_id'],record['recipient']]})],clientenv(i))
    assert json.loads(body)==record
-  command([ROOT/'bin/dis-sync','-fabric-config',WORK/'gateway.json','-out',ROOT/'runtime/dns','-once','-verify',dns])
+  deadline=time.monotonic()+20
+  while True:
+   try:
+    command([ROOT/'bin/dis-sync','-fabric-config',WORK/'gateway.json','-redis',f'127.0.0.1:{services["redis_port"]}','-check','-verify',dns])
+    break
+   except subprocess.CalledProcessError:
+    if time.monotonic()>deadline:raise
+    time.sleep(.2)
  verify()
  if args.restart:
   for script,action in [('services.py','down'),('network.py','down'),('network.py','up'),('services.py','up')]:
@@ -29,6 +36,6 @@ def main():
   with urllib.request.urlopen(request,timeout=30) as response:assert json.load(response)==step['result']
  after=json.loads(command([ROOT/'bin/dis-check','-fabric-config',WORK/'gateway.json']))['sequence']
  assert before==after
- report={'workflow':'passed','exact_replay':'passed','four_peer_queries':'passed','complete_dns_axfr':'passed','restart_recovery':'passed' if args.restart else 'not-requested','authorization':record}
+ report={'committed_event_publication':'passed','workflow':'passed','exact_replay':'passed','four_peer_queries':'passed','complete_dns_axfr':'passed','restart_recovery':'passed' if args.restart else 'not-requested','authorization':record}
  output=ROOT/'runtime/acceptance.json';output.write_text(json.dumps(report,indent=2));print(json.dumps(report,indent=2))
 if __name__=='__main__':main()

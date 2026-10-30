@@ -6,12 +6,12 @@ Peer and orderer traffic uses TLS. Each peer connects to its own external chainc
 
 ## Setup
 
-Requirements: Linux amd64, Go 1.22 or later, Python 3.9 or later, and PyYAML.
+Requirements: Linux amd64, Go 1.23.4 or later, Python 3.9 or later, and PyYAML.
 
 ```bash
 python3 -m pip install PyYAML
 python3 scripts/bootstrap.py
-go build -o bin/ ./cmd/dis-api ./cmd/dis-chaincode ./cmd/dis-demo ./cmd/dis-sync ./cmd/dis-check
+go build -o bin/ ./cmd/...
 python3 scripts/network.py up
 ```
 

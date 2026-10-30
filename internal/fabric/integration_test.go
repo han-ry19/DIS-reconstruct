@@ -82,6 +82,13 @@ func TestLiveFabricWorkflow(t *testing.T) {
 		t.Fatal(e)
 	}
 	record := got.Authorizations[domain.AuthorizationKey(dataID, ownerID, appID)]
+	direct, e := backend.GetAuthorization(dataID, ownerID, appID)
+	if e != nil || !reflect.DeepEqual(direct, record) {
+		t.Fatalf("direct authorization query: %v %v", direct, e)
+	}
+	if _, e = backend.GetIdentity("missing-" + suffix + ".uid"); !errors.Is(e, domain.ErrNotFound) {
+		t.Fatalf("missing direct identity: %v", e)
+	}
 	if record.Status != domain.AuthorizationApproved || record.ExpiresAt != expiry || !reflect.DeepEqual(record.Permissions, permissions) {
 		t.Fatal(record)
 	}

@@ -75,7 +75,7 @@ def configure(base):
             s=socket.socket();s.bind(('127.0.0.1',base+offset));sockets.append(s)
     finally:
         for s in sockets:s.close()
-    m={'base':base,'domain':'dis-local','processes':{},'phase':'configured','packages':{}}
+    m={'base':base,'domain':'dis-local','processes':{},'phase':'configured','packages':{},'ledger_schema':2,'definition_sequence':1}
     write(WORK/'crypto.json',{'OrdererOrgs':[{'Name':'Orderer','Domain':'orderer.dis','EnableNodeOUs':True,'Specs':[{'Hostname':f'o{i}','SANS':['localhost','127.0.0.1']} for i in range(4)]}], 'PeerOrgs':[{'Name':f'Org{i}','Domain':f'org{i}.dis','EnableNodeOUs':True,'Specs':[{'Hostname':'peer0','SANS':['localhost','127.0.0.1']}],'Users':{'Count':1}} for i in range(4)]})
     run([BIN/'cryptogen','generate','--config',WORK/'crypto.json','--output',WORK/'crypto'])
     sig=lambda rule:dict(Type='Signature',Rule=rule)

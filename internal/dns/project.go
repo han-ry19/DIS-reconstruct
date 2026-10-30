@@ -86,6 +86,7 @@ func Project(s domain.State) (map[string][]mdns.RR, error) {
 	return zones, nil
 }
 func Digest(s domain.State) (string, error) {
+	s.Receipts = nil
 	b, e := json.Marshal(s)
 	if e != nil {
 		return "", e

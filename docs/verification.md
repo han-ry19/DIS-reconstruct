@@ -1,43 +1,30 @@
 # System verification
 
-The reconstruction has passed an end-to-end deployment using the committed source, official Fabric 2.4.9 binaries, and CoreDNS 1.12.0 on Linux amd64.
+The connected reconstruction runs Fabric 2.4.9, Redis 7.2.5, and CoreDNS 1.12.0 with the repository's disredis plugin on Linux amd64.
 
-## Verified configuration
+## Verified behavior
 
-- Four Fabric peer organizations, with one peer per organization.
-- Four Raft orderers and the dis application channel.
-- A three-of-four organization endorsement policy for the dis chaincode.
-- Signed management requests through the Fabric-backed API.
-- Periodic publication of committed state into the uid and data authoritative DNS zones.
+- Signed registration, authorization requests, and owner decisions commit through Fabric.
+- Forged signatures, non-owner decisions, and conflicting request IDs are rejected.
+- Exact retries return their stored results without changing business sequence.
+- Four peers independently return the expected authorization.
+- Committed chaincode events publish the matching Redis and authoritative DNS state.
+- Full TCP AXFR compares every record in both zones with the ledger projection.
+- Fabric, Redis, API, publisher, and CoreDNS restart with records retained.
+- A publisher stopped during a complete business workflow catches up from its event checkpoint.
+- The v1 state document migrates to object keys and preserves historical receipts.
+- Race-enabled Go tests and static analysis pass.
 
-## Acceptance results
-
-| Check | Result |
-|---|---|
-| User and application registration, data registration, authorization request, and owner approval | Passed |
-| Authorization queries against all four peers | Passed |
-| Exact retries return their original results without advancing business state | Passed |
-| Forged signatures, decisions by a non-owner, and conflicting request IDs are rejected | Passed |
-| Full TCP AXFR of both DNS zones matches the committed snapshot | Passed |
-| API, synchronizer, CoreDNS, peers, chaincode services, and orderers restart with state retained | Passed |
-| Original signed requests remain replayable after restart without repeating their effects | Passed |
-| Go race-enabled tests, static analysis, and the live Fabric integration test | Passed |
-
-## Fresh-checkout reproduction
-
-A separate clean clone was built from commit 1a57199 with no existing runtime directory or application binaries. The bootstrap script installed the pinned official releases from cached archives and verified their SHA-256 hashes. The network manager generated new certificates, created new ledgers, installed and initialized the chaincode, and configured organization anchors. The complete restart acceptance and live Fabric tests then passed against that deployment.
-
-The test used cached release archives. It verifies installation and deployment independently of earlier runtime state; downloading those archives depends on the host's access to GitHub releases.
-
-## Reproduce the checks
-
-Follow the [running guide](runbook.md) to install, build, and start the system, then run:
+## Commands
 
 ```bash
 go test -race ./...
 go vet ./...
-python scripts/acceptance.py --restart
 DIS_FABRIC_CONFIG="$PWD/runtime/fabric/gateway.json" go test -v ./internal/fabric -run TestLiveFabricWorkflow
+python3 scripts/acceptance.py --restart
+python3 scripts/acceptance-events.py
 ```
 
-The acceptance runner writes its results to runtime/acceptance.json. Runtime files, generated identities, private keys, ledgers, and logs remain outside version control.
+An optional Redis integration test uses DIS_TEST_REDIS_ADDRESS pointing to an isolated instance. That test owns the DIS keys in the selected instance; use a separate test port.
+
+Runtime acceptance reports contain concrete results. Generated identities, keys, ledgers, and logs remain outside version control. The [source mapping](original-implementation.md) identifies which upstream mechanisms are recovered and which interfaces remain adapted.

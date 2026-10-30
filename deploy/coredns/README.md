@@ -1,47 +1,37 @@
-# CoreDNS publication
+# Redis-backed CoreDNS
 
-The synchronization service reads committed Fabric state, writes the uid and data zones, and lets CoreDNS reload them. A complete TCP AXFR check compares both served zones with the ledger projection.
+The connected deployment follows the original DIS publication architecture: committed Fabric events update Redis, and a CoreDNS plugin answers DNS queries from Redis records.
 
-## Record mapping
+## Components
 
-| Object | DNS records |
-|---|---|
-| Identity | CERT public-key payload; TXT signature scheme |
-| Data | RP owner; URI address; TXT data signature |
-| Data profile | TXT at _profile.<data-identifier> |
-| Authorization | TXT JSON at <application-label>.<data-identifier> |
+- cmd/dis-sync: full-state bootstrap, committed event consumption, Redis publication, and restart checkpoints.
+- plugin/disredis: a CoreDNS 1.12.0 adapter for the original DIS per-label JSON format.
+- cmd/dis-coredns: builds CoreDNS with the adapter, bind, and errors plugins.
+- Redis 7.2.5: installed from a pinned, checksum-verified source archive by scripts/bootstrap.py.
 
-The mapping follows Dominate's record types and authorization naming. The CERT payload uses the OID certificate type (254): the Ed25519 OID followed by the raw public key, with a length prefix for the OID. This is the reconstruction's key encoding. Algorithm metadata is Ed25519. Authorization JSON preserves the owner, recipient, status, permissions, and timestamps. TTL is 3600 seconds.
+The Redis zone keys are uid. and data.; fields are relative names, with @ for the zone apex. Each field contains JSON arrays for supported record types. A stable SOA serial follows the business sequence.
 
-## Start the connected services
+## Run and verify
 
-After starting the Fabric network and building the executables:
+After building all commands and starting Fabric:
 
 ```bash
 python3 scripts/services.py up
 bin/dis-demo -url http://127.0.0.1:28080
-bin/dis-sync -fabric-config runtime/fabric/gateway.json -out runtime/dns -once -verify 127.0.0.1:28530
+bin/dis-sync -fabric-config runtime/fabric/gateway.json -redis 127.0.0.1:28679 -check -verify 127.0.0.1:28530
+python3 scripts/acceptance-events.py
 ```
 
-Verification waits up to 15 seconds for CoreDNS to load the target zones. A successful publication log after -verify confirms that the full authoritative contents match the target snapshot. Without -verify, publication confirms that the zone files were written.
+The check command compares the Redis projection and full authoritative AXFR results with Fabric. It does not publish. The event acceptance stops the publisher, commits a workflow while it is offline, and verifies event catch-up after restart.
 
-The service manager binds the API to loopback port 28080 and DNS to loopback port 28530 by default. Select --api-port and --dns-port on initial setup to use other ports.
+The service manager uses loopback API port 28080, DNS port 28530, and Redis port 28679. Initial ports are configurable. Redis AOF persistence and the saved event position support restart recovery. Public DNS records, object-cache changes, and checkpoint updates share a Redis transaction.
+
+## Export zone files
 
 ```bash
-python3 scripts/services.py status
-python3 scripts/services.py down
+bin/dis-sync -fabric-config runtime/fabric/gateway.json -out runtime/dns -once
 ```
 
-Stopping services preserves published files. Restarting refreshes them from the Fabric ledger. The publisher rejects a snapshot older than the recorded published sequence, or a different snapshot at the same sequence. Each zone file is replaced atomically; the two zones converge through CoreDNS reload.
+This command exports a full snapshot for inspection. The connected CoreDNS process reads Redis, not these files.
 
-## Query records
-
-With dig installed, use an identifier printed by the demo:
-
-```bash
-dig @127.0.0.1 -p 28530 DATA_IDENTIFIER URI
-dig @127.0.0.1 -p 28530 DATA_IDENTIFIER RP
-dig @127.0.0.1 -p 28530 APPLICATION_LABEL.DATA_IDENTIFIER TXT
-```
-
-Replace the uppercase placeholders with actual names. AXFR is enabled for loopback clients to support complete verification.
+See the [original implementation mapping](../../docs/original-implementation.md) for source revisions and adaptation details.

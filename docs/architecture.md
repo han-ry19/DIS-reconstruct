@@ -1,25 +1,21 @@
 # Architecture
 
-DIS-reconstruct follows the identifier-management workflow described in DIA and Dominate: register identities, register data, request access, record the owner's decision, and resolve the resulting records.
+DIS-reconstruct connects signed identifier management to Fabric and publishes committed records through Redis-backed CoreDNS. Its reconstruction follows the original DIS service, chaincode, and DNS implementation.
 
-## Application interface
+## Management
 
-The client and DIS API expose identity, data, and authorization operations. Identity registration binds an identifier to a public key. Data registration associates an identifier with an owner, address, signature, and profile. Authorization operations maintain requests and owner decisions.
+The API accepts signed identity, data, authorization request, and owner-decision operations. Fabric peers execute the transitions under the chaincode endorsement policy. The API waits for a valid commit before reporting a successful update.
 
-## Fabric contracts
+Composite ledger keys separate identities, data objects, pending authorizations, and retry receipts. Decisions update the confirmed authorization map embedded in a data object. Metadata tracks the reconstruction's business sequence.
 
-Identity management, identifier management, and authorization management form the contract layer. Peers simulate contract execution, the client collects matching endorsements that satisfy the policy, and the ordering service orders transactions. Peers validate transactions and apply valid updates to the ledger.
+## Publication and resolution
 
-The API's Fabric client handles transaction submission and queries for application-facing operations.
+A full snapshot initializes the Redis projection. Subsequent committed chaincode events update the affected DNS and cached object fields. Redis publishes those fields and the event checkpoint in one transaction. The publisher resumes from that checkpoint after a disconnect and loads a snapshot if it detects a sequence gap.
 
-## Queries and DNS publication
+CoreDNS runs the disredis plugin and reads the requested zone and relative label from Redis. Zone-file exports are available for inspection and development. Normal Fabric publication is event-driven.
 
-Identity lookup returns a registered public key. The synchronization service is designed to periodically read committed identifier and authorization records, encode them as DNS resource records, and generate zone files for CoreDNS.
+## Completion
 
-Clients retain private keys, Fabric stores management state, CoreDNS serves identifier records, and external data services store the original data.
+A valid Fabric commit completes the ledger operation. A matching authoritative DNS answer completes publication. The acceptance runner checks the event-driven projection and both full DNS zones without triggering publication itself.
 
-## Completion states
-
-Ledger commit indicates that a management record has been recorded. DNS visibility indicates that the corresponding record can be resolved. These states identify the outcome of an operation and its publication progress.
-
-See the [running guide](runbook.md) for currently executable functionality.
+The [original implementation mapping](original-implementation.md) records upstream revisions, recovered behavior, and remaining interface differences.

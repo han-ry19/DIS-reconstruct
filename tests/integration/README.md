@@ -1,10 +1,5 @@
 # Integration verification
 
-Integration tests check the boundaries between requests, contracts, ledger state, and publication:
+Go tests cover signed requests, contract transitions, migration, DNS encoding, event sequence validation, and publication recovery. Set DIS_FABRIC_CONFIG to run the live Fabric workflow. Set DIS_TEST_REDIS_ADDRESS to an isolated Redis instance to test atomic projection and checkpoint recovery.
 
-- Request signatures and permissions are checked through the API and contract path.
-- Valid transactions produce the expected management records.
-- Conflicting and repeated requests follow the defined business semantics.
-- Published DNS records match committed state.
-
-The HTTP tests in internal/api cover the business workflow, failure cases, concurrency, and restart recovery. The tests in chaincode/dis exercise the Fabric adapter using the shim test stub. DNS publication checks will follow synchronization implementation.
+The connected acceptance commands are documented in [system verification](../../docs/verification.md).

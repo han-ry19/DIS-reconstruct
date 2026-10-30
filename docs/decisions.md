@@ -14,7 +14,7 @@ Issuance and expiration fields use inputs shared within the transaction. The dev
 
 ## Ledger-to-DNS synchronization
 
-Following the periodic synchronization approach in the papers, the publication service reads committed records and generates DNS zone data. Operational checks distinguish ledger results from DNS responses.
+Following the original service and chaincode, a full snapshot initializes the projection and committed chaincode events update Redis records. CoreDNS reads those records through disredis. Operational checks distinguish ledger results from authoritative DNS responses.
 
 ## Business scope
 
@@ -32,7 +32,7 @@ Following DIA Algorithm 2, a newly signed request writes a pending record at the
 
 ## Initial state layout
 
-The development backend persists an atomic JSON state document and uses a single-writer file lock. The initial Fabric adapter stores the document at dis.state.v1 and uses GetState/PutState for the transition. This layout gives a common read/write dependency to updates; the layout is recorded here so its concurrency behavior can be interpreted when the system is exercised.
+The development backend persists an atomic JSON state document and uses a single-writer file lock. Fabric stores identities, data objects, pending authorizations, and receipts under composite keys. Confirmed authorizations are embedded in each data object, following the original chaincode. The reconstruction retains a shared metadata sequence for compatibility with results and DNS serials. MigrateState converts an existing dis.state.v1 document in place. See the original implementation mapping for concurrency and interface boundaries.
 
 ## DNS record encoding
 

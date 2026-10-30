@@ -73,6 +73,17 @@ func (s *Server) submit(w http.ResponseWriter, r *http.Request) {
 	write(w, 200, result)
 }
 func (s *Server) identity(w http.ResponseWriter, r *http.Request) {
+	if reader, ok := s.Store.(interface {
+		GetIdentity(string) (domain.Identity, error)
+	}); ok {
+		v, e := reader.GetIdentity(r.PathValue("id"))
+		if e != nil {
+			problem(w, e)
+			return
+		}
+		write(w, 200, v)
+		return
+	}
 	state, e := s.Store.View()
 	if e != nil {
 		problem(w, e)
@@ -86,6 +97,17 @@ func (s *Server) identity(w http.ResponseWriter, r *http.Request) {
 	write(w, 200, v)
 }
 func (s *Server) data(w http.ResponseWriter, r *http.Request) {
+	if reader, ok := s.Store.(interface {
+		GetData(string) (domain.DataIdentifier, error)
+	}); ok {
+		v, e := reader.GetData(r.PathValue("id"))
+		if e != nil {
+			problem(w, e)
+			return
+		}
+		write(w, 200, v)
+		return
+	}
 	state, e := s.Store.View()
 	if e != nil {
 		problem(w, e)
@@ -99,6 +121,18 @@ func (s *Server) data(w http.ResponseWriter, r *http.Request) {
 	write(w, 200, v)
 }
 func (s *Server) authorization(w http.ResponseWriter, r *http.Request) {
+	if reader, ok := s.Store.(interface {
+		GetAuthorization(string, string, string) (domain.AuthorizationRecord, error)
+	}); ok {
+		q := r.URL.Query()
+		v, e := reader.GetAuthorization(q.Get("data_id"), q.Get("owner_id"), q.Get("recipient"))
+		if e != nil {
+			problem(w, e)
+			return
+		}
+		write(w, 200, v)
+		return
+	}
 	state, e := s.Store.View()
 	if e != nil {
 		problem(w, e)

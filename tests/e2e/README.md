@@ -1,9 +1,5 @@
 # End-to-end verification
 
-The acceptance scenario follows the DIA/Dominate identifier-management workflow:
+The connected scenario registers a user and application, registers data, requests access, records the owner's approval, and resolves the result through Redis-backed CoreDNS.
 
-Register user and application identities → register data → resolve its attributes → request access → record the owner's approval → resolve the approved authorization.
-
-Checks will cover public keys, data attributes, authorization status, and DNS responses. Additional scenarios will exercise rejected requests, unauthorized operations, repeated submissions, and service restarts.
-
-This workflow defines the reconstruction's business acceptance criteria.
+Run scripts/acceptance.py --restart to check four peers, full DNS records, exact replay, and component recovery. Run scripts/acceptance-events.py to prove event catch-up after offline commits without forcing a full publication. Results are saved under runtime.

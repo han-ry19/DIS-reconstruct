@@ -9,45 +9,40 @@ import (
 	"io"
 )
 
-const stateKey = "dis.state.v1"
-
-// Contract connects deterministic business transitions to the Fabric ledger.
-// The initial implementation stores a complete state document per transaction.
 type Contract struct{}
 
 func (c *Contract) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	_, args := stub.GetFunctionAndParameters()
-	if len(args) != 1 || len(args[0]) == 0 {
+	if len(args) != 1 || args[0] == "" {
 		return shim.Error("Init requires a domain")
 	}
-	existing, e := stub.GetState(stateKey)
-	if e != nil {
-		return shim.Error(e.Error())
+	for _, key := range []string{metadataKey, legacyKey} {
+		b, e := stub.GetState(key)
+		if e != nil {
+			return shim.Error(e.Error())
+		}
+		if b != nil {
+			return shim.Error("already initialized")
+		}
 	}
-	if existing != nil {
-		return shim.Error("already initialized")
-	}
-	state := domain.NewState(args[0])
-	b, e := json.Marshal(state)
-	if e != nil {
-		return shim.Error(e.Error())
-	}
-	if e = stub.PutState(stateKey, b); e != nil {
+	if e := putMetadata(stub, metadata{Domain: args[0]}); e != nil {
 		return shim.Error(e.Error())
 	}
 	return shim.Success(nil)
 }
 func (c *Contract) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	function, args := stub.GetFunctionAndParameters()
-	b, e := stub.GetState(stateKey)
+	if function == "MigrateState" {
+		if len(args) != 0 {
+			return shim.Error("MigrateState takes no arguments")
+		}
+		if e := migrate(stub); e != nil {
+			return shim.Error(e.Error())
+		}
+		return shim.Success(nil)
+	}
+	m, e := getMetadata(stub)
 	if e != nil {
-		return shim.Error(e.Error())
-	}
-	if b == nil {
-		return shim.Error("not initialized")
-	}
-	var state domain.State
-	if e = json.Unmarshal(b, &state); e != nil {
 		return shim.Error(e.Error())
 	}
 	switch function {
@@ -64,21 +59,39 @@ func (c *Contract) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		if e = decoder.Decode(new(any)); e != io.EOF {
 			return shim.Error("invalid trailing JSON")
 		}
-		timestamp, e := stub.GetTxTimestamp()
+		s, d, e := loadRequest(stub, m, request)
 		if e != nil {
 			return shim.Error(e.Error())
 		}
-		previous := state.Sequence
-		result, e := domain.Apply(&state, request, timestamp.Seconds)
+		ts, e := stub.GetTxTimestamp()
 		if e != nil {
 			return shim.Error(e.Error())
 		}
-		if previous != state.Sequence {
-			encoded, e := json.Marshal(state)
+		result, e := domain.Apply(&s, request, ts.Seconds)
+		if e != nil {
+			return shim.Error(e.Error())
+		}
+		if s.Sequence != m.Sequence {
+			if e = persist(stub, s, request, d, result); e != nil {
+				return shim.Error(e.Error())
+			}
+			change := domain.Change{Domain: s.Domain, Sequence: s.Sequence, Operation: request.Operation}
+			switch request.Operation {
+			case "identity.register":
+				v := s.Identities[result.ObjectID]
+				change.Identity = &v
+			case "data.register":
+				v := s.Data[result.ObjectID]
+				change.Data = &v
+			default:
+				v := s.Authorizations[result.ObjectID]
+				change.Authorization = &v
+			}
+			b, e := json.Marshal(change)
 			if e != nil {
 				return shim.Error(e.Error())
 			}
-			if e = stub.PutState(stateKey, encoded); e != nil {
+			if e = stub.SetEvent(domain.ZoneUpdateEvent, b); e != nil {
 				return shim.Error(e.Error())
 			}
 		}
@@ -87,12 +100,20 @@ func (c *Contract) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		if len(args) != 0 {
 			return shim.Error("GetSnapshot takes no arguments")
 		}
-		return shim.Success(b)
+		s, e := snapshot(stub, m)
+		if e != nil {
+			return shim.Error(e.Error())
+		}
+		return success(s)
 	case "GetIdentity":
 		if len(args) != 1 {
 			return shim.Error("GetIdentity requires an identifier")
 		}
-		v, ok := state.Identities[args[0]]
+		var v domain.Identity
+		ok, e := read(stub, identityKind, &v, args[0])
+		if e != nil {
+			return shim.Error(e.Error())
+		}
 		if !ok {
 			return shim.Error("not found")
 		}
@@ -101,20 +122,35 @@ func (c *Contract) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		if len(args) != 1 {
 			return shim.Error("GetData requires an identifier")
 		}
-		v, ok := state.Data[args[0]]
+		v, ok, e := object(stub, args[0])
+		if e != nil {
+			return shim.Error(e.Error())
+		}
 		if !ok {
 			return shim.Error("not found")
 		}
-		return success(v)
+		return success(v.Data)
 	case "GetAuthorization":
 		if len(args) != 3 {
 			return shim.Error("GetAuthorization requires data, owner, recipient")
 		}
-		v, ok := state.Authorizations[domain.AuthorizationKey(args[0], args[1], args[2])]
+		var a domain.AuthorizationRecord
+		ok, e := read(stub, pendingKind, &a, args...)
+		if e != nil {
+			return shim.Error(e.Error())
+		}
+		if ok {
+			return success(a)
+		}
+		d, _, e := object(stub, args[0])
+		if e != nil {
+			return shim.Error(e.Error())
+		}
+		a, ok = d.Authorizations[domain.AuthorizationKey(args[0], args[1], args[2])]
 		if !ok {
 			return shim.Error("not found")
 		}
-		return success(v)
+		return success(a)
 	default:
 		return shim.Error("unknown function")
 	}

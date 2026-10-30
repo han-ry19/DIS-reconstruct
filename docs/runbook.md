@@ -5,10 +5,11 @@ This guide runs the DIA/Dominate registration and authorization workflow through
 ## Requirements
 
 - Linux amd64
-- Git and Go 1.22 or later
+- Git and Go 1.23.4 or later
+- A C compiler and make for Redis
 - Python 3.9 or later, with venv support
 - Access to GitHub releases and the Go module proxy for dependency downloads
-- Available loopback ports in the 27000–27063 range, plus 28080 and 28530
+- Available loopback ports in the 27000–27063 range, plus 28080, 28530, and 28679
 
 ## Install and build
 
@@ -19,10 +20,10 @@ python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install PyYAML
 python scripts/bootstrap.py
-go build -o bin/ ./cmd/dis-api ./cmd/dis-cli ./cmd/dis-demo ./cmd/dis-chaincode ./cmd/dis-sync ./cmd/dis-check
+go build -o bin/ ./cmd/...
 ```
 
-The bootstrap script installs Fabric 2.4.9 and CoreDNS 1.12.0 under runtime/tools. Offline release archives can be provided with --archive and --coredns-archive. See the [Fabric setup](../deploy/fabric/README.md) for network details.
+The bootstrap script installs Fabric 2.4.9, the CoreDNS 1.12.0 release archive, and Redis 7.2.5 under runtime/tools. The build command creates dis-coredns with the Redis plugin used by the connected deployment. Offline release archives can be provided with --archive, --coredns-archive, and --redis-archive. See the [Fabric setup](../deploy/fabric/README.md) for network details.
 
 ## Start the system
 
@@ -31,13 +32,13 @@ python scripts/network.py up
 python scripts/services.py up
 ```
 
-The network manager creates four peer organizations, four Raft orderers, the dis channel, and the dis chaincode. Any three of the four peer organizations satisfy the business endorsement policy. The service manager starts the API, periodic Fabric-to-DNS synchronization, and CoreDNS.
+The network manager creates four peer organizations, four Raft orderers, the dis channel, and the dis chaincode. Any three of the four peer organizations satisfy the business endorsement policy. The service manager starts the API, committed Fabric event publication to Redis, and CoreDNS.
 
 ## Run the workflow
 
 ```bash
 bin/dis-demo -url http://127.0.0.1:28080
-bin/dis-sync -fabric-config runtime/fabric/gateway.json -out runtime/dns -once -verify 127.0.0.1:28530
+bin/dis-sync -fabric-config runtime/fabric/gateway.json -redis 127.0.0.1:28679 -check -verify 127.0.0.1:28530
 ```
 
 The demo creates user and application identities, registers data, requests Read access, records the owner's approval, and queries the authorization. Each run uses fresh identifiers. The verification command checks both authoritative DNS zones against the committed snapshot.
@@ -61,10 +62,15 @@ Certificates, ledgers, published records, and logs are retained under runtime. R
 go test -race ./...
 go vet ./...
 python scripts/acceptance.py --restart
+python scripts/acceptance-events.py
 DIS_FABRIC_CONFIG="$PWD/runtime/fabric/gateway.json" go test -v ./internal/fabric -run TestLiveFabricWorkflow
 ```
 
 The live test exercises real Fabric commits and queries, signature rejection, owner permissions, request conflicts, and retries. Unit and integration tests also cover deterministic transitions, file-store recovery, publication encoding, and stale-publication rejection.
+
+## Upgrade an existing v1 deployment
+
+Build the commands, stop the services and network, and run python scripts/upgrade-ledger.py. Save runtime/dns/status.json before the first export with the new digest format. Start services again after migration. See the [source mapping](original-implementation.md) for migration behavior.
 
 ## Development without a Fabric network
 

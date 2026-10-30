@@ -1,20 +1,15 @@
 # Operational scripts
 
-The process smoke test starts an API on an available loopback port, runs the signed demo, submits a CLI-signed registration, restarts the API, and verifies persisted records. It uses temporary state and stops its processes on completion.
+Run scripts from the repository root. The [running guide](../docs/runbook.md) gives installation and interactive commands.
 
-Build the binaries and run the test from the repository root (Python 3 is required):
+| Script | Purpose |
+|---|---|
+| bootstrap.py | Install pinned Fabric, CoreDNS, and Redis tools |
+| network.py | Create and manage the scoped Fabric network |
+| services.py | Manage Redis, the event publisher, CoreDNS, and the API |
+| upgrade-ledger.py | Upgrade an initialized v1 network and migrate state in place |
+| acceptance.py --restart | Verify signed workflow, four-peer queries, event publication, DNS AXFR, replay, and restart |
+| acceptance-events.py | Stop the publisher, submit offline updates, and verify checkpoint catch-up |
+| smoke.py | Verify the development file backend and CLI signing |
 
-```bash
-go build -o bin/ ./cmd/dis-api ./cmd/dis-cli ./cmd/dis-demo
-python3 scripts/smoke.py
-```
-
-See the [running guide](../docs/runbook.md) for interactive use. Network deployment and DNS lifecycle scripts will accompany those integrations.
-
-## Connected system acceptance
-
-After starting the Fabric network and connected services, run:
-
-    python3 scripts/acceptance.py --restart
-
-The script verifies a signed business workflow, queries the authorization on all four peers, checks both authoritative DNS zones, restarts the managed components, and repeats the record checks. Results are saved to runtime/acceptance.json. The system is left running for inspection.
+Acceptance reports are written beneath runtime. Managed services remain running after connected acceptance. The event acceptance requires exclusive control of the project's publisher process.

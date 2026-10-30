@@ -25,4 +25,6 @@ The DIA mapping follows Section III's components and interaction workflow, Algor
 
 The reconstruction focuses on identifier registration, management, and resolution. Identity lookup and data addresses provide the interfaces to identity and external data services; data discovery is an adjacent service in the broader architecture.
 
+The original service, chaincode, and Redis-backed CoreDNS path are documented in [original implementation mapping](original-implementation.md).
+
 Engineering choices are recorded in [implementation decisions](decisions.md). Executable components are described in the [running guide](runbook.md).

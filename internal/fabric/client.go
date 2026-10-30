@@ -28,6 +28,8 @@ type Config struct {
 	Chaincode   string `json:"chaincode"`
 }
 type Backend struct {
+	network    *client.Network
+	chaincode  string
 	connection *grpc.ClientConn
 	gateway    *client.Gateway
 	contract   *client.Contract
@@ -83,7 +85,7 @@ func Open(path string) (*Backend, error) {
 		conn.Close()
 		return nil, e
 	}
-	return &Backend{connection: conn, gateway: gw, contract: gw.GetNetwork(cfg.Channel).GetContract(cfg.Chaincode)}, nil
+	return &Backend{connection: conn, gateway: gw, network: gw.GetNetwork(cfg.Channel), chaincode: cfg.Chaincode, contract: gw.GetNetwork(cfg.Channel).GetContract(cfg.Chaincode)}, nil
 }
 func (b *Backend) Close()       { b.gateway.Close(); b.connection.Close() }
 func (b *Backend) Name() string { return "fabric" }
