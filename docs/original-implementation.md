@@ -1,6 +1,6 @@
 # Original implementation and reconstruction
 
-The reconstruction uses the original DIS service, chaincode, and CoreDNS repositories to recover the registration, authorization, and resolution path on a maintained build environment.
+This project reconstructs the DNS identifier registration, management, authorization, and resolution components described in DIA and Dominate, following the papers and their source code.
 
 ## Source references
 
@@ -11,8 +11,6 @@ The reconstruction uses the original DIS service, chaincode, and CoreDNS reposit
 | fuxi-inc/dip-dis-chaincode | 63c85ef, 2024-03-22 | Contract methods, composite keys, embedded confirmed authorizations, and DNS update events |
 | fuxi-inc/dip-dis-chaincode | e795f6d, 2024-07-03, branch v2.3.1-zwy-fullupdatepartition | GetZoneRedisPagination |
 | fuxi-inc/dis-coredns | df7d651, 2024-04-29, plugin/redis | Redis hash and JSON record representation, per-query HGET, and DNS response construction |
-
-The reconstruction covers identifier registration, data management, authorization requests and decisions, and DNS resolution. These components provide the business workflow used in the paper's system evaluation.
 
 ## Recovered mechanisms
 

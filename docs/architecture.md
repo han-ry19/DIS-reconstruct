@@ -1,6 +1,6 @@
 # Architecture
 
-DIS-reconstruct connects signed identifier management to Fabric and publishes committed records through Redis-backed CoreDNS. Its reconstruction follows the original DIS service, chaincode, and DNS implementation.
+This project reconstructs the DNS identifier registration, management, authorization, and resolution components described in DIA and Dominate, following the papers and their source code.
 
 ## Management
 

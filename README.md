@@ -1,8 +1,6 @@
 # DIS-reconstruct
 
-**Reconstructing the identifier registration, management, and resolution components of DIS described in DIA and Dominate.**
-
-DIS connects users, applications, and data services through registered identities, resolvable data identifiers, and owner-controlled access authorization. This project translates the architecture and business workflows in DIA and Dominate into an implementation built on Hyperledger Fabric, Redis, and CoreDNS.
+This project reconstructs the DNS identifier registration, management, authorization, and resolution components described in DIA and Dominate, following the papers and their source code.
 
 ## System design
 
