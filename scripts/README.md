@@ -10,6 +10,7 @@ Run scripts from the repository root. The [running guide](../docs/runbook.md) gi
 | upgrade-ledger.py | Upgrade an initialized v1 network and migrate state in place |
 | acceptance.py --restart --all-gateways | Verify signed workflow, every peer and Gateway, replica endorsement, event publication, DNS AXFR, replay, and restart |
 | acceptance-events.py | Stop the publisher, submit offline updates, and verify checkpoint catch-up |
+| benchmark-caliper.py | Run signed registration with Caliper and generate isolated benchmark artifacts |
 | benchmark-paper.py | Measure registration, committed-state reads, or DNS under a fixed offered-load sweep |
 | benchmark-scale.py | Measure majority-endorsed registration across configurable organization counts |
 | smoke.py | Verify the development file backend and CLI signing |
