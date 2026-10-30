@@ -17,5 +17,11 @@ def main():
    run([BIN/'peer','lifecycle','chaincode','commit']+definition+orderflags(m)+peerflags(m),clientenv(0))
    m['definition_sequence']=sequence+1;m['ledger_schema']=2;save(m)
   subprocess.run([str(ROOT/'bin/dis-migrate'),'-fabric-config',str(WORK/'gateway.json')],check=True)
+  if m.get('publication_digest_version',1)<2:
+   status=ROOT/'runtime/dns/status.json'
+   if status.exists():
+    backup=ROOT/'runtime/reconstruction-backup';backup.mkdir(parents=True,exist_ok=True)
+    status.rename(backup/'publication-status-before-v2.json')
+   m['publication_digest_version']=2;save(m)
   print('Chaincode definition upgraded; business state and request receipts migrated')
 if __name__=='__main__':main()

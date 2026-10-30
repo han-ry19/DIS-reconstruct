@@ -106,8 +106,30 @@ func (h *Handler) ServeDNS(ctx context.Context, w mdns.ResponseWriter, r *mdns.M
 		}
 		sort.Slice(all, func(i, j int) bool { return all[i].String() < all[j].String() })
 		all = append([]mdns.RR{soa}, append(all, soa)...)
-		envelopes := make(chan *mdns.Envelope, 1)
-		envelopes <- &mdns.Envelope{RR: all}
+
+		batches := [][]mdns.RR{}
+		batch := []mdns.RR{}
+		size := 0
+		for _, rr := range all {
+			length := mdns.Len(rr)
+			if length > 48000 {
+				return mdns.RcodeServerFailure, fmt.Errorf("record exceeds AXFR message limit")
+			}
+			if size+length > 48000 {
+				batches = append(batches, batch)
+				batch = nil
+				size = 0
+			}
+			batch = append(batch, rr)
+			size += length
+		}
+		if len(batch) > 0 {
+			batches = append(batches, batch)
+		}
+		envelopes := make(chan *mdns.Envelope, len(batches))
+		for _, rows := range batches {
+			envelopes <- &mdns.Envelope{RR: rows}
+		}
 		close(envelopes)
 		t := new(mdns.Transfer)
 		e = t.Out(w, r, envelopes)
@@ -142,8 +164,19 @@ func (h *Handler) ServeDNS(ctx context.Context, w mdns.ResponseWriter, r *mdns.M
 			}
 		}
 	}
-	if r.IsEdns0() == nil {
-		reply.Truncate(mdns.MinMsgSize)
+
+	if _, udp := w.RemoteAddr().(*net.UDPAddr); udp {
+		size := mdns.MinMsgSize
+		if opt := r.IsEdns0(); opt != nil {
+			size = int(opt.UDPSize())
+			if size < mdns.MinMsgSize {
+				size = mdns.MinMsgSize
+			}
+			if size > 4096 {
+				size = 4096
+			}
+		}
+		reply.Truncate(size)
 	}
 	return mdns.RcodeSuccess, w.WriteMsg(reply)
 }

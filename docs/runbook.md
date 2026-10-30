@@ -70,7 +70,7 @@ The live test exercises real Fabric commits and queries, signature rejection, ow
 
 ## Upgrade an existing v1 deployment
 
-Build the commands, stop the services and network, and run python scripts/upgrade-ledger.py. Save runtime/dns/status.json before the first export with the new digest format. Start services again after migration. See the [source mapping](original-implementation.md) for migration behavior.
+Build the commands, stop the services and network, and run python scripts/upgrade-ledger.py. The upgrade script preserves the previous publication status under runtime/reconstruction-backup. Start services again after migration. See the [source mapping](original-implementation.md) for migration behavior.
 
 ## Development without a Fabric network
 

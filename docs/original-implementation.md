@@ -39,4 +39,4 @@ The four-organization, three-endorsement Fabric policy is this reconstruction's 
 
 For an existing v1 deployment, stop the managed services and network, build the new commands, and run scripts/upgrade-ledger.py. The script starts the existing network, advances the chaincode definition sequence, and submits MigrateState. Migration creates object and receipt keys, removes the legacy state document, and preserves identifiers and historical results. The migration is idempotent.
 
-Save the previous runtime/dns/status.json before the first publication with the new digest format. The new publication digest excludes transaction receipts. Existing runtime records and certificates remain on the host. Fresh deployments start directly with the object layout.
+The upgrade script saves the previous runtime/dns/status.json under runtime/reconstruction-backup before the first publication with the new digest format. The new publication digest excludes transaction receipts. Existing runtime records and certificates remain on the host. Fresh deployments start directly with the object layout.
