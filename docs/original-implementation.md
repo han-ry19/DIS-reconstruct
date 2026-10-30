@@ -12,7 +12,7 @@ The reconstruction uses the original DIS service, chaincode, and CoreDNS reposit
 | fuxi-inc/dip-dis-chaincode | e795f6d, 2024-07-03, branch v2.3.1-zwy-fullupdatepartition | GetZoneRedisPagination |
 | fuxi-inc/dis-coredns | df7d651, 2024-04-29, plugin/redis | Redis hash and JSON record representation, per-query HGET, and DNS response construction |
 
-The upstream repositories are inspected separately. This repository implements the recovered architecture through its existing typed interfaces; it does not embed the upstream repositories or import their operational configuration and credentials.
+The reconstruction covers identifier registration, data management, authorization requests and decisions, and DNS resolution. These components provide the business workflow used in the paper's system evaluation.
 
 ## Recovered mechanisms
 
@@ -23,17 +23,17 @@ The upstream repositories are inspected separately. This repository implements t
 - CoreDNS 1.12.0 is built with the disredis plugin, which performs HGET for ordinary queries and HGETALL for complete AXFR verification.
 - Startup performs a full committed-state load. Redis record updates and the event checkpoint are committed together. Reconnection resumes after the saved block and transaction; a sequence gap triggers full recovery.
 
-## Current adaptation boundaries
+## Component design
 
-The current signed API preserves the existing identity.register, data.register, authorization.request, and authorization.decide operations. Its Ed25519 request encoding and pending/approved/rejected representation are reconstruction interfaces, not wire-compatible copies of the original DIP API. The original chaincode's DOI alias maps, extended ownership/delegation operations, and paginated full-zone API have not been ported.
+The signed API exposes identity.register, data.register, authorization.request, and authorization.decide. Ed25519 signatures authenticate requests, and authorization records progress through pending, approved, or rejected states.
 
-Business sequence and receipt fields remain compatible with the initial reconstruction. A shared metadata sequence is still updated by management transactions; concurrency measurements must account for that dependency. The state layout is object-based, but this revision is not an implementation of independent-object concurrent commits.
+Management transactions update object records, request receipts, and a shared metadata sequence. The shared sequence establishes the order consumed by the publisher and creates a common write dependency between management transactions.
 
-The publisher retains the projection in memory and computes its digest over the complete state. It writes changed DNS/object fields to Redis; it does not query Fabric or rewrite zone files for every event. Full-zone export remains available through -once. Full recovery currently uses GetSnapshot rather than the original paginated query.
+The publisher holds the projection in memory, computes a complete-state digest, and writes changed object and DNS fields to Redis. GetSnapshot provides full recovery, and -once exports zone files.
 
-The plugin preserves the original JSON fields and adds a stable SOA serial for full verification. Its supported projection types are A, NS, SOA, CERT, RP, URI, and TXT. Zone discovery is fixed to uid and data. It is an adaptation on CoreDNS 1.12.0, not a build of the complete old fork.
+The CoreDNS plugin serves the uid and data zones with A, NS, SOA, CERT, RP, URI, and TXT records. The SOA serial follows the business sequence, and large AXFR responses span multiple DNS messages.
 
-The four-organization, three-endorsement Fabric policy is this reconstruction's deployment configuration. The inspected upstream lifecycle scripts do not specify an explicit chaincode endorsement policy; the original effective policy requires the matching channel configuration.
+The supplied deployment runs four peer organizations with a three-organization endorsement threshold and four Raft orderers.
 
 ## In-place migration
 

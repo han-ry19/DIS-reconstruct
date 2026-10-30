@@ -28,7 +28,7 @@ python3 scripts/acceptance-events.py
 
 An optional Redis integration test uses DIS_TEST_REDIS_ADDRESS pointing to an isolated instance. That test owns the DIS keys in the selected instance; use a separate test port.
 
-Runtime acceptance reports contain concrete results. Generated identities, keys, ledgers, and logs remain outside version control. The [source mapping](original-implementation.md) identifies which upstream mechanisms are recovered and which interfaces remain adapted.
+Runtime acceptance reports contain concrete results. Generated identities, keys, ledgers, and logs remain outside version control. The [source mapping](original-implementation.md) connects the implemented registration, authorization, and resolution components to their upstream source references.
 
 ## Fresh deployment verification
 

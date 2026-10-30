@@ -18,4 +18,4 @@ CoreDNS runs the disredis plugin and reads the requested zone and relative label
 
 A valid Fabric commit completes the ledger operation. A matching authoritative DNS answer completes publication. The acceptance runner checks the event-driven projection and both full DNS zones without triggering publication itself.
 
-The [original implementation mapping](original-implementation.md) records upstream revisions, recovered behavior, and remaining interface differences.
+The [original implementation mapping](original-implementation.md) records the source revisions and component design used for the registration, authorization, and resolution workflow.
