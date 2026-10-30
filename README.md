@@ -1,6 +1,6 @@
 # DIS-reconstruct
 
-This project reconstructs the DNS identifier registration, management, authorization, and resolution components described in DIA and Dominate, following the papers and their source code.
+This project reconstructs the DNS identifier registration, management, authorization, and resolution components described in Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership and Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications, following the papers and their source code.
 
 ## System design
 
@@ -25,7 +25,7 @@ Follow the [running guide](docs/runbook.md) to start the Fabric network and Core
 ## Documentation
 
 - [Architecture](docs/architecture.md)
-- [Mapping to DIA and Dominate](docs/dia-mapping.md)
+- [Mapping to Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership and Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications](docs/dia-mapping.md)
 - [Implementation decisions](docs/decisions.md)
 - [Running guide](docs/runbook.md)
 - [System verification](docs/verification.md)

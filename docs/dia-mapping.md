@@ -1,6 +1,6 @@
-# Mapping to DIA and Dominate
+# Mapping to Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership and Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications
 
-DIS-reconstruct implements the identity, data identifier, and authorization management path described in DIA and Dominate, together with DNS publication and resolution.
+DIS-reconstruct implements the identity, data identifier, and authorization management path described in Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership and Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications, together with DNS publication and resolution.
 
 ## Component mapping
 
@@ -11,7 +11,7 @@ DIS-reconstruct implements the identity, data identifier, and authorization mana
 | Authorization Management | Access requests and owner decisions | Maintain pending, approved, and rejected records |
 | Blockchain Platform | Fabric network and contracts | Execute and record management operations |
 | Identifier System | Synchronization service and CoreDNS | Resolve identifier and authorization records |
-| Dominate's DIS-hub interface | DIS API | Provide an application-facing entry point |
+| Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications's DIS-hub interface | DIS API | Provide an application-facing entry point |
 
 ## Business semantics
 
@@ -21,7 +21,7 @@ Data registration binds an identifier to its owner, address, data signature, and
 
 ## Design references
 
-The DIA mapping follows Section III's components and interaction workflow, Algorithms 1–3, and Section IV's implementation. The Dominate mapping follows its system design and Section 8's implementation and evaluation.
+The Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership mapping follows Section III's components and interaction workflow, Algorithms 1–3, and Section IV's implementation. The Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications mapping follows its system design and Section 8's implementation and evaluation.
 
 The reconstruction focuses on identifier registration, management, and resolution. Identity lookup and data addresses provide the interfaces to identity and external data services; data discovery is an adjacent service in the broader architecture.
 

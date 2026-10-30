@@ -2,7 +2,7 @@
 
 ## Project scope
 
-Reconstruct the DIS identifier registration, management, and resolution components described in DIA and Dominate. Use the paper architecture and algorithms to guide Fabric contracts, application interfaces, and CoreDNS synchronization.
+Reconstruct the DIS identifier registration, management, and resolution components described in Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership and Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications. Use the paper architecture and algorithms to guide Fabric contracts, application interfaces, and CoreDNS synchronization.
 
 The lightweight governance system is a separate project. Keep this repository focused on the reconstruction's business semantics and infrastructure.
 

@@ -1,6 +1,6 @@
 # Running DIS-reconstruct
 
-This guide runs the DIA/Dominate registration and authorization workflow through Fabric and publishes the resulting records through CoreDNS.
+This guide runs the Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership and Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications registration and authorization workflow through Fabric and publishes the resulting records through CoreDNS.
 
 ## Requirements
 

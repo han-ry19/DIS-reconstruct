@@ -2,7 +2,7 @@
 
 ## Deterministic data registration
 
-DIA's registration algorithm creates a data identifier using a UUID. In this reconstruction, the client supplies a UUID candidate bound to the request. The contract checks its format and uniqueness so endorsing peers can produce consistent results from the same input.
+Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership's registration algorithm creates a data identifier using a UUID. In this reconstruction, the client supplies a UUID candidate bound to the request. The contract checks its format and uniqueness so endorsing peers can produce consistent results from the same input.
 
 ## Owner decisions and Fabric endorsement
 
@@ -28,7 +28,7 @@ Data signatures are stored as data attributes and checked for encoding. Verifica
 
 ## Authorization record updates
 
-Following DIA Algorithm 2, a newly signed request writes a pending record at the data/owner/recipient composite key. An exact retry returns its historical result. Following Algorithm 3, an owner decision preserves requested permissions and expiration while setting status and issuance time.
+Following Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership Algorithm 2, a newly signed request writes a pending record at the data/owner/recipient composite key. An exact retry returns its historical result. Following Algorithm 3, an owner decision preserves requested permissions and expiration while setting status and issuance time.
 
 ## Initial state layout
 
@@ -36,7 +36,7 @@ The development backend persists an atomic JSON state document and uses a single
 
 ## DNS record encoding
 
-The projection follows Dominate's identity CERT/TXT, data RP/URI/TXT, and authorization TXT structure. For Ed25519 key material, CERT type 254 carries an OID-length byte, the DER OID value for 1.3.101.112, and the raw key. Data profiles use a separate _profile TXT name. Full AXFR verification compares all authoritative records, including SOA serials, with the committed snapshot.
+The projection follows Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications's identity CERT/TXT, data RP/URI/TXT, and authorization TXT structure. For Ed25519 key material, CERT type 254 carries an OID-length byte, the DER OID value for 1.3.101.112, and the raw key. Data profiles use a separate _profile TXT name. Full AXFR verification compares all authoritative records, including SOA serials, with the committed snapshot.
 
 ## Completion timestamps
 
