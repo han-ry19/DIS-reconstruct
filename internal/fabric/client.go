@@ -76,7 +76,7 @@ func Open(path string) (*Backend, error) {
 	if e != nil {
 		return nil, e
 	}
-	conn, e := grpc.Dial(cfg.Endpoint, grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(pool, cfg.ServerName)))
+	conn, e := grpc.Dial(cfg.Endpoint, grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(pool, cfg.ServerName)), grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(64<<20)))
 	if e != nil {
 		return nil, e
 	}

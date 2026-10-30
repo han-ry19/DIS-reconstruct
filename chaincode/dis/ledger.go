@@ -18,8 +18,9 @@ const pendingKind = "AuthorizationUnconfirmed"
 const receiptKind = "RequestReceipt"
 
 type metadata struct {
-	Domain   string
-	Sequence uint64
+	ReceiptSequence bool
+	Domain          string
+	Sequence        uint64
 }
 type dataObject struct {
 	Data           domain.DataIdentifier                 `json:"data"`
@@ -185,7 +186,26 @@ func snapshot(stub shim.ChaincodeStubInterface, m metadata) (domain.State, error
 		s.Authorizations[domain.AuthorizationKey(v.DataID, v.OwnerID, v.Recipient)] = v
 		return nil
 	})
-	// Receipts are transaction metadata and are read directly for retries, not exported to DNS.
+	if e != nil {
+		return s, e
+	}
+	if m.ReceiptSequence {
+		s.ReceiptSequence = true
+		s.AppliedRequests = map[string]bool{}
+		e = scan(stub, receiptKind, func(b []byte) error {
+			var receipt domain.Receipt
+			if e := json.Unmarshal(b, &receipt); e != nil {
+				return e
+			}
+			// The receipt stores the actor separately from its public result.
+			if receipt.Actor == "" {
+				return fmt.Errorf("receipt missing actor")
+			}
+			s.AppliedRequests[receipt.Actor+"|"+receipt.Result.RequestID] = true
+			return nil
+		})
+		s.Sequence = m.Sequence + uint64(len(s.AppliedRequests))
+	}
 	return s, e
 }
 func persist(stub shim.ChaincodeStubInterface, s domain.State, r domain.Request, d dataObject, result domain.Result) error {
@@ -216,6 +236,13 @@ func persist(stub shim.ChaincodeStubInterface, s domain.State, r domain.Request,
 	}
 	if e := put(stub, receiptKind, s.Receipts[r.Actor+"|"+r.RequestID], r.Actor, r.RequestID); e != nil {
 		return e
+	}
+	m, e := getMetadata(stub)
+	if e != nil {
+		return e
+	}
+	if m.ReceiptSequence {
+		return nil
 	}
 	return putMetadata(stub, metadata{Domain: s.Domain, Sequence: s.Sequence})
 }

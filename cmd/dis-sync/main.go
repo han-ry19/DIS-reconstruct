@@ -17,7 +17,7 @@ func verifyState(s domain.State, address string) error {
 	if address == "" {
 		return nil
 	}
-	deadline := time.Now().Add(15 * time.Second)
+	deadline := time.Now().Add(60 * time.Second)
 	for {
 		e := dns.Verify(s, address)
 		if e == nil {
@@ -174,7 +174,11 @@ func follow(b *fabric.Backend, view func() (domain.State, error), address, outpu
 			if e = json.Unmarshal(event.Payload, &change); e != nil {
 				return e
 			}
-			if change.Sequence > p.State.Sequence {
+			if change.RequestKey != "" && p.State.AppliedRequests[change.RequestKey] {
+				// A bootstrap snapshot already contains this committed transition.
+				continue
+			}
+			if (change.RequestKey != "" && !p.State.AppliedRequests[change.RequestKey]) || (change.RequestKey == "" && change.Sequence > p.State.Sequence) {
 				p.Change = &change
 				if e = dns.ApplyChange(&p.State, change); e != nil {
 					// Recover missed updates from one committed snapshot, then resume the stream.

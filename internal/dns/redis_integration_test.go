@@ -19,11 +19,13 @@ func TestLiveRedisProjectionRecovery(t *testing.T) {
 		t.Fatal(e)
 	}
 	defer c.Close()
-	keys := []any{cacheKey, "uid.", "data.", "_dis:identities", "_dis:data", "_dis:authorizations"}
+	keys := []any{cacheKey, "uid.", "data.", "_dis:identities", "_dis:data", "_dis:authorizations", "_dis:applied"}
 	if _, e = c.Do("DEL", keys...); e != nil {
 		t.Fatal(e)
 	}
 	s := fixture()
+	s.ReceiptSequence = true
+	s.AppliedRequests = map[string]bool{"alice.uid|setup": true}
 	p := ProjectionCheckpoint{State: s, Block: 10, Transaction: "first"}
 	if e = SaveProjection(address, p, true); e != nil {
 		t.Fatal(e)
@@ -34,11 +36,11 @@ func TestLiveRedisProjectionRecovery(t *testing.T) {
 	}
 	a, _ := Digest(s)
 	b, _ := Digest(recovered.State)
-	if a != b || recovered.Block != 10 {
+	if a != b || recovered.Block != 10 || !recovered.State.AppliedRequests["alice.uid|setup"] {
 		t.Fatal("full recovery changed state")
 	}
 	id := domain.Identity{ID: "extra.uid", Kind: "user", PublicKey: s.Identities["alice.uid"].PublicKey}
-	change := domain.Change{Domain: s.Domain, Sequence: s.Sequence + 1, Operation: "identity.register", Identity: &id}
+	change := domain.Change{Domain: s.Domain, RequestKey: "extra.uid|register", Operation: "identity.register", Identity: &id}
 	if e = ApplyChange(&p.State, change); e != nil {
 		t.Fatal(e)
 	}
@@ -49,7 +51,7 @@ func TestLiveRedisProjectionRecovery(t *testing.T) {
 		t.Fatal(e)
 	}
 	recovered, ok, e = LoadProjection(address)
-	if e != nil || !ok || recovered.State.Identities[id.ID].ID != id.ID || recovered.Transaction != "second" {
+	if e != nil || !ok || recovered.State.Identities[id.ID].ID != id.ID || recovered.Transaction != "second" || !recovered.State.AppliedRequests["extra.uid|register"] {
 		t.Fatal(recovered, e)
 	}
 	raw, _ := redis.Bytes(c.Do("GET", cacheKey))

@@ -16,6 +16,7 @@ func TestFabricAdapter(t *testing.T) {
 	if r := stub.MockInit("init", [][]byte{[]byte("Init"), []byte("test")}); r.Status != 200 {
 		t.Fatal(r.Message)
 	}
+	before, _ := stub.GetState(metadataKey)
 	pub, key, _ := ed25519.GenerateKey(rand.Reader)
 	req := domain.Request{Domain: "test", Operation: "identity.register", Actor: "alice.uid", RequestID: "register", Timestamp: time.Now().Unix(), Parameters: domain.Parameters{IdentityID: "alice.uid", PublicKey: base64.StdEncoding.EncodeToString(pub), Kind: "user"}}
 	domain.Sign(&req, key)
@@ -24,9 +25,13 @@ func TestFabricAdapter(t *testing.T) {
 	if r.Status != 200 {
 		t.Fatal(r.Message)
 	}
+	after, _ := stub.GetState(metadataKey)
+	if string(before) != string(after) {
+		t.Fatal("independent registration rewrote shared metadata")
+	}
 	var result domain.Result
 	json.Unmarshal(r.Payload, &result)
-	if result.Sequence != 1 {
+	if result.TransactionID != "tx1" || result.Sequence != 0 {
 		t.Fatal(result)
 	}
 	repeat := stub.MockInvoke("tx2", [][]byte{[]byte("Submit"), b})

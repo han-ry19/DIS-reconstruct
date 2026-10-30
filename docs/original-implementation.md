@@ -25,7 +25,7 @@ This project reconstructs the DNS identifier registration, management, authoriza
 
 The signed API exposes identity.register, data.register, authorization.request, and authorization.decide. Ed25519 signatures authenticate requests, and authorization records progress through pending, approved, or rejected states.
 
-Management transactions update object records, request receipts, and a shared metadata sequence. The shared sequence establishes the order consumed by the publisher and creates a common write dependency between management transactions.
+Management transactions update the affected object records and actor-scoped request receipts. Fresh ledgers return a Fabric transaction ID and leave common metadata unchanged, so unrelated registrations have independent write sets. A snapshot derives the publication sequence from committed receipts; the publisher increments that sequence for each distinct committed event in Fabric order. Existing ledgers continue to use their stored sequence format.
 
 The publisher holds the projection in memory, computes a complete-state digest, and writes changed object and DNS fields to Redis. GetSnapshot provides full recovery, and -once exports zone files.
 

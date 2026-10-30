@@ -6,12 +6,18 @@ from network import stamp,live,RUNTIME
 ROOT=Path(__file__).resolve().parents[1]
 WORK=RUNTIME/'services'
 def main():
- parser=argparse.ArgumentParser();parser.add_argument('action',choices=['up','down','status']);parser.add_argument('--api-port',type=int,default=28080);parser.add_argument('--dns-port',type=int,default=28530);parser.add_argument('--redis-port',type=int,default=28679);args=parser.parse_args()
+ parser=argparse.ArgumentParser();parser.add_argument('action',choices=['up','down','status']);parser.add_argument('--api-port',type=int);parser.add_argument('--dns-port',type=int);parser.add_argument('--redis-port',type=int);args=parser.parse_args()
  WORK.mkdir(parents=True,exist_ok=True)
  with (WORK/'manager.lock').open('a') as lock:
   fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-  path=WORK/'services.json';m=json.loads(path.read_text()) if path.exists() else {'processes':{},'api_port':args.api_port,'dns_port':args.dns_port,'redis_port':args.redis_port}
-  m.setdefault('redis_port',args.redis_port)
+  path=WORK/'services.json';m=json.loads(path.read_text()) if path.exists() else {'processes':{},'api_port':28080,'dns_port':28530,'redis_port':28679}
+  m.setdefault('redis_port',28679)
+  if args.action=='up':
+   for field in ['api_port','dns_port','redis_port']:
+    requested=getattr(args,field)
+    if requested is not None and requested!=m[field]:
+     if any(live(p) for p in m['processes'].values()):raise RuntimeError('Stop services before changing ports')
+     m[field]=requested
   def save():path.write_text(json.dumps(m,indent=2))
   def stop():
    for p in reversed(list(m['processes'].values())):
@@ -52,12 +58,12 @@ def main():
    spawn('coredns',[ROOT/'bin/dis-coredns','-conf',WORK/'Corefile'])
    spawn('sync',sync)
    spawn('api',[ROOT/'bin/dis-api','-listen',f'127.0.0.1:{m["api_port"]}','-fabric-config',profile])
-   deadline=time.monotonic()+45
+   deadline=time.monotonic()+180
    while True:
     if any(not live(p) for p in m['processes'].values()):raise RuntimeError('Service exited; inspect runtime/services logs')
     try:
      with urllib.request.urlopen(f'http://127.0.0.1:{m["api_port"]}/healthz',timeout=1) as response:assert json.load(response)['backend']=='fabric'
-     check=subprocess.run([str(v) for v in sync]+['-check','-verify',f'127.0.0.1:{m["dns_port"]}'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=20)
+     check=subprocess.run([str(v) for v in sync]+['-check','-verify',f'127.0.0.1:{m["dns_port"]}'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=120)
      if check.returncode==0:break
     except (OSError,subprocess.TimeoutExpired):pass
     if time.monotonic()>deadline:raise RuntimeError('Service readiness timeout')

@@ -25,7 +25,7 @@ func (c *Contract) Init(stub shim.ChaincodeStubInterface) pb.Response {
 			return shim.Error("already initialized")
 		}
 	}
-	if e := putMetadata(stub, metadata{Domain: args[0]}); e != nil {
+	if e := putMetadata(stub, metadata{Domain: args[0], ReceiptSequence: true}); e != nil {
 		return shim.Error(e.Error())
 	}
 	return shim.Success(nil)
@@ -72,10 +72,22 @@ func (c *Contract) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 			return shim.Error(e.Error())
 		}
 		if s.Sequence != m.Sequence {
+			if m.ReceiptSequence {
+				result.Sequence = 0
+				result.TransactionID = stub.GetTxID()
+				receipt := s.Receipts[request.Actor+"|"+request.RequestID]
+				receipt.Result = result
+				receipt.Actor = request.Actor
+				s.Receipts[request.Actor+"|"+request.RequestID] = receipt
+			}
 			if e = persist(stub, s, request, d, result); e != nil {
 				return shim.Error(e.Error())
 			}
 			change := domain.Change{Domain: s.Domain, Sequence: s.Sequence, Operation: request.Operation}
+			if m.ReceiptSequence {
+				change.Sequence = 0
+				change.RequestKey = request.Actor + "|" + request.RequestID
+			}
 			switch request.Operation {
 			case "identity.register":
 				v := s.Identities[result.ObjectID]

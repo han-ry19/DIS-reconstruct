@@ -104,7 +104,7 @@ func Verify(s domain.State, address string) error {
 	for _, zone := range []string{"uid.", "data."} {
 		message := new(mdns.Msg)
 		message.SetAxfr(zone)
-		transfer := &mdns.Transfer{DialTimeout: 5 * time.Second, ReadTimeout: 5 * time.Second, WriteTimeout: 5 * time.Second}
+		transfer := &mdns.Transfer{DialTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 5 * time.Second}
 		envelopes, e := transfer.In(message, address)
 		if e != nil {
 			return e

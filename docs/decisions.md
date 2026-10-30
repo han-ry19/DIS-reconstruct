@@ -32,7 +32,7 @@ Following Data Interoperating Architecture (DIA): Decoupling Data and Applicatio
 
 ## Initial state layout
 
-The development backend persists an atomic JSON state document and uses a single-writer file lock. Fabric stores identities, data objects, pending authorizations, and receipts under composite keys. Confirmed authorizations are embedded in each data object, following the original chaincode. The reconstruction retains a shared metadata sequence for compatibility with results and DNS serials. MigrateState converts an existing dis.state.v1 document in place. See the original implementation mapping for concurrency and interface boundaries.
+The development backend persists an atomic JSON state document and uses a single-writer file lock. Fabric stores identities, data objects, pending authorizations, and receipts under composite keys. Confirmed authorizations are embedded in each data object, following the original chaincode. Fresh Fabric ledgers identify successful transitions by transaction ID and persist actor-scoped retry receipts. The DNS publication sequence is derived from committed receipts and advances as distinct committed events are applied; independent registrations do not rewrite a shared counter. Existing ledgers retain their sequence format. MigrateState converts an existing dis.state.v1 document in place.
 
 ## DNS record encoding
 

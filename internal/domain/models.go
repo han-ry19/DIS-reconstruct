@@ -62,23 +62,27 @@ type Request struct {
 	Signature  string     `json:"signature"`
 }
 type Result struct {
-	RequestID   string `json:"request_id"`
-	Operation   string `json:"operation"`
-	ObjectID    string `json:"object_id"`
-	Sequence    uint64 `json:"sequence"`
-	CommittedAt int64  `json:"committed_at"`
+	RequestID     string `json:"request_id"`
+	Operation     string `json:"operation"`
+	ObjectID      string `json:"object_id"`
+	Sequence      uint64 `json:"sequence,omitempty"`
+	TransactionID string `json:"transaction_id,omitempty"`
+	CommittedAt   int64  `json:"committed_at"`
 }
 type Receipt struct {
+	Actor  string `json:"actor,omitempty"`
 	Digest string `json:"digest"`
 	Result Result `json:"result"`
 }
 type State struct {
-	Domain         string                         `json:"domain"`
-	Sequence       uint64                         `json:"sequence"`
-	Identities     map[string]Identity            `json:"identities"`
-	Data           map[string]DataIdentifier      `json:"data"`
-	Authorizations map[string]AuthorizationRecord `json:"authorizations"`
-	Receipts       map[string]Receipt             `json:"receipts"`
+	ReceiptSequence bool                           `json:"receipt_sequence,omitempty"`
+	AppliedRequests map[string]bool                `json:"applied_requests,omitempty"`
+	Domain          string                         `json:"domain"`
+	Sequence        uint64                         `json:"sequence"`
+	Identities      map[string]Identity            `json:"identities"`
+	Data            map[string]DataIdentifier      `json:"data"`
+	Authorizations  map[string]AuthorizationRecord `json:"authorizations"`
+	Receipts        map[string]Receipt             `json:"receipts"`
 }
 
 func NewState(domain string) State {

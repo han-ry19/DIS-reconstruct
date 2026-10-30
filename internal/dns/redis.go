@@ -52,6 +52,7 @@ func LoadProjection(address string) (ProjectionCheckpoint, bool, error) {
 	}
 	s := domain.NewState(p.State.Domain)
 	s.Sequence = p.State.Sequence
+	s.ReceiptSequence = p.State.ReceiptSequence
 	load := func(key string, consume func(string, []byte) error) error {
 		values, e := redis.StringMap(c.Do("HGETALL", key))
 		if e != nil {
@@ -93,6 +94,12 @@ func LoadProjection(address string) (ProjectionCheckpoint, bool, error) {
 		return nil
 	}); e != nil {
 		return p, false, e
+	}
+	if s.ReceiptSequence {
+		s.AppliedRequests = map[string]bool{}
+		if e = load("_dis:applied", func(k string, b []byte) error { s.AppliedRequests[k] = true; return nil }); e != nil {
+			return p, false, e
+		}
 	}
 	if _, e = c.Do("MULTI"); e != nil {
 		return p, false, e
@@ -228,7 +235,7 @@ func SaveProjection(address string, p ProjectionCheckpoint, full bool) error {
 		return e
 	}
 	metadata := p
-	metadata.State = domain.State{Domain: p.State.Domain, Sequence: p.State.Sequence}
+	metadata.State = domain.State{Domain: p.State.Domain, Sequence: p.State.Sequence, ReceiptSequence: p.State.ReceiptSequence}
 	b, e := json.Marshal(metadata)
 	if e != nil {
 		return e
@@ -286,6 +293,20 @@ func SaveProjection(address string, p ProjectionCheckpoint, full bool) error {
 			}
 		}
 	}
+	if full {
+		if e = c.Send("DEL", "_dis:applied"); e != nil {
+			return e
+		}
+		for k := range p.State.AppliedRequests {
+			if e = c.Send("HSET", "_dis:applied", k, "1"); e != nil {
+				return e
+			}
+		}
+	} else if p.Change != nil && p.Change.RequestKey != "" {
+		if e = c.Send("HSET", "_dis:applied", p.Change.RequestKey, "1"); e != nil {
+			return e
+		}
+	}
 	if e = c.Send("SET", cacheKey, b); e != nil {
 		return e
 	}
@@ -303,6 +324,15 @@ func SaveProjection(address string, p ProjectionCheckpoint, full bool) error {
 func ApplyChange(s *domain.State, c domain.Change) error {
 	if c.Domain != s.Domain {
 		return fmt.Errorf("event domain mismatch")
+	}
+	if c.RequestKey != "" {
+		if !s.ReceiptSequence {
+			return fmt.Errorf("receipt event requires receipt-count snapshot")
+		}
+		if s.AppliedRequests[c.RequestKey] {
+			return nil
+		}
+		c.Sequence = s.Sequence + 1
 	}
 	if c.Sequence <= s.Sequence {
 		return nil
@@ -331,5 +361,11 @@ func ApplyChange(s *domain.State, c domain.Change) error {
 		return fmt.Errorf("unknown event operation")
 	}
 	s.Sequence = c.Sequence
+	if c.RequestKey != "" {
+		if s.AppliedRequests == nil {
+			s.AppliedRequests = map[string]bool{}
+		}
+		s.AppliedRequests[c.RequestKey] = true
+	}
 	return nil
 }

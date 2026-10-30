@@ -11,7 +11,6 @@ import (
 	"github.com/gomodule/redigo/redis"
 	mdns "github.com/miekg/dns"
 	"net"
-	"sort"
 	"strings"
 	"time"
 )
@@ -104,7 +103,6 @@ func (h *Handler) ServeDNS(ctx context.Context, w mdns.ResponseWriter, r *mdns.M
 		if soa == nil {
 			return mdns.RcodeServerFailure, fmt.Errorf("missing SOA")
 		}
-		sort.Slice(all, func(i, j int) bool { return all[i].String() < all[j].String() })
 		all = append([]mdns.RR{soa}, append(all, soa)...)
 
 		batches := [][]mdns.RR{}
