@@ -14,7 +14,7 @@ def load_topology(path=None, port_base=27000):
     raw = yaml.safe_load(Path(path).read_text()) if path else {}
     if not isinstance(raw, dict):
         raise ValueError('Topology must be a mapping')
-    allowed = {'organizations', 'peers_per_organization', 'orderers', 'endorsement_threshold', 'port_base', 'hosts', 'placement', 'domain'}
+    allowed = {'organizations', 'peers_per_organization', 'orderers', 'endorsement_threshold', 'port_base', 'hosts', 'placement', 'domain', 'gateway_concurrency'}
     if set(raw) - allowed:
         raise ValueError('Unknown topology fields: ' + ', '.join(sorted(set(raw) - allowed)))
     n = positive(raw.get('organizations', 4), 'organizations', 64)
@@ -71,9 +71,12 @@ def load_topology(path=None, port_base=27000):
             raise ValueError(f'placement.{kind} must contain {count} known host names')
     if base + 1000 + (n * p - 1) * 10 + 3 > 65535 or base + (o - 1) * 10 + 2 > 65535:
         raise ValueError('Topology port range exceeds 65535')
-    return dict(organizations=n, peers_per_organization=p, orderers=o,
+    result = dict(organizations=n, peers_per_organization=p, orderers=o,
                 endorsement_threshold=threshold, port_base=base, hosts=normalized,
                 placement=dict(peers=peer_hosts, orderers=order_hosts), domain=domain)
+    if 'gateway_concurrency' in raw:
+        result['gateway_concurrency'] = positive(raw['gateway_concurrency'], 'gateway_concurrency', 1000000)
+    return result
 
 
 def nodes(topology):

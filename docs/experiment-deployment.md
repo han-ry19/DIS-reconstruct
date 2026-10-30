@@ -30,6 +30,8 @@ hosts:
     address: 127.0.0.1
 ~~~
 
+The optional gateway_concurrency field sets peer.limits.concurrency.gatewayService on each peer. It accepts a positive integer and defaults to the pinned Fabric configuration value of 500 when omitted. Set it before creating an experiment; use a new DIS_RUNTIME for a different setting. This limits concurrent Gateway RPCs per peer, rather than transactions per second. Keep it fixed during load sweeps and record it with the results.
+
 The default organization endorsement threshold is a strict majority. An organization contributes one endorsement to the threshold regardless of its number of peers. Raft ordering membership is configured separately. The chaincode lifecycle approval policy uses a majority of organizations.
 
 Orderer i uses port_base + 10*i for its Fabric endpoint and the next two ports for operations and administration. Peer k uses port_base + 1000 + 10*k and the next three ports for its peer chaincode listener, external chaincode server, and operations endpoint. Peer k is numbered in organization order. The manager checks the selected ports before creating a network. Choose API, DNS, and Redis ports separately with services.py; use nonoverlapping ranges for concurrently running experiments.

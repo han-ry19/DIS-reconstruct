@@ -306,6 +306,7 @@ def configure(topology):
         siblings = [endpoint(m, p) for p in peers if p['org'] == i and p['key'] != node['key']]
         cfg['peer']['gossip'].update(bootstrap=' '.join(siblings), externalEndpoint=endpoint(m, node), useLeaderElection=False, orgLeader=True)
         cfg['peer']['gateway'] = {'enabled': True}
+        cfg['peer']['limits']['concurrency']['gatewayService'] = topology.get('gateway_concurrency', 500)
         cfg['operations']['listenAddress'] = f"127.0.0.1:{node['operations']}"
         cfg['chaincode']['externalBuilders'] = [dict(name='dis-external', path=str(builder.parent), propagateEnvironment=['DIS_CHAINCODE_ADDRESS'])]
         cfg['vm']['endpoint'] = ''

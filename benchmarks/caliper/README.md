@@ -32,6 +32,10 @@ The report and logs record actual send rate, successful and failed completions, 
 
 Only registration calls are timed. Setup transactions, signing, and later DNS verification are outside that interval. Fabric commit and DNS visibility are separate completion conditions. Run performance workloads sequentially and use a new output directory for every run.
 
+## Gateway concurrency
+
+The default five-organization topology retains Fabric 2.4.9's Gateway concurrency limit of 500. Use deploy/topologies/caliper-5org-gateway2500.yaml with a fresh DIS_RUNTIME to measure the same workload with 2500 concurrent Gateway RPCs per peer. The two topology files otherwise use the same network settings. Stop a deployment before reusing its port range. Keep worker count, offered rates, round duration, endorsement policy, and block settings fixed when comparing these configurations.
+
 ## Artifacts
 
 All generated configurations, reports, dependency installations, and measurement samples remain under runtime and are ignored by Git. The network configuration references private key paths; keep generated artifacts within the experiment environment. The repository contains reusable workload code and portable instructions.

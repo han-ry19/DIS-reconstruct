@@ -32,6 +32,7 @@ class TopologyTests(unittest.TestCase):
     def test_invalid_configurations_are_rejected(self):
         for invalid in [dict(organizations=0), dict(orderers=True), dict(endorsement_threshold=5),
                         dict(peers_per_organization=-1), dict(port_base=65530), dict(organization=3),
+                        dict(gateway_concurrency=0), dict(gateway_concurrency=True), dict(gateway_concurrency='2500'),
                         dict(placement={'peers': ['missing']}), dict(hosts={'local': {'address': '0.0.0.0'}}),
                         dict(hosts={'a': {'address': '127.0.0.1'}, 'b': {'address': 'worker', 'ssh': 'user@worker', 'root': '/tmp/run'}}),
                         dict(hosts={'remote': {'address': 'worker', 'ssh': 'user@worker', 'root': '/'}})]:
