@@ -26,6 +26,7 @@ Follow the [running guide](docs/runbook.md) to start the Fabric network and Core
 
 ## Documentation
 
+- [Registration and DNS benchmark measurements](results/paper-20261030/README.md)
 - [Architecture](docs/architecture.md)
 - [Mapping to Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership and Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications](docs/dia-mapping.md)
 - [Implementation decisions](docs/decisions.md)
