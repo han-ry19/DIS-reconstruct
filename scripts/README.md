@@ -12,7 +12,6 @@ Run scripts from the repository root. The [running guide](../docs/runbook.md) gi
 | acceptance-events.py | Stop the publisher, submit offline updates, and verify checkpoint catch-up |
 | benchmark-paper.py | Measure registration, committed-state reads, or DNS under a fixed offered-load sweep |
 | benchmark-scale.py | Measure majority-endorsed registration across configurable organization counts |
-| summarize-benchmarks.py | Generate aggregate tables, figures, and a reproducible benchmark report |
 | smoke.py | Verify the development file backend and CLI signing |
 
 Use DIS_RUNTIME to isolate deployment state and acceptance reports for each experiment. The [experiment deployment guide](../docs/experiment-deployment.md) describes topology files and SSH workers.

@@ -11,7 +11,7 @@ from network import ROOT
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--counts', default='2,4,8,12,16')
-    parser.add_argument('--out', default='runtime/benchmarks/paper-20261030/scaling')
+    parser.add_argument('--out', default='runtime/benchmarks/scaling')
     parser.add_argument('--duration', type=int, default=5)
     parser.add_argument('--repetitions', type=int, default=3)
     args = parser.parse_args()
