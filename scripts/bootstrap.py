@@ -56,7 +56,7 @@ def main():
     path.parent.mkdir(parents=True,exist_ok=True)
     with tar.extractfile(member) as source:path.write_bytes(source.read())
     path.chmod(member.mode & 0o755)
- subprocess.run(['make','-C',str(tools/'redis-7.2.5'),'-j4','MALLOC=libc','BUILD_TLS=no','redis-server','redis-cli'],check=True)
+ subprocess.run(['make','-C',str(tools/'redis-7.2.5/src'),'-j4','MALLOC=libc','BUILD_TLS=no','redis-server','redis-cli'],check=True)
  print('Installed Redis 7.2.5 from verified source')
  print('Installed Fabric',VERSION,'and CoreDNS 1.12.0 under runtime/tools')
  print('Fabric archive SHA256:',digest)
