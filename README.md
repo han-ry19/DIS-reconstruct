@@ -22,6 +22,10 @@ Deployment topology is configurable for experiments with different organization,
 
 Users and applications submit requests through the DIS API. Fabric contracts validate and record management operations. A synchronization service applies committed chaincode events to Redis records served by a CoreDNS plugin. Original data remains in external data services.
 
+## Configuration
+
+Use [config.yaml](config.yaml) and the [configuration guide](config/README.md) to configure and launch a deployment with one file. Run `python3 scripts/dis.py plan`, then `python3 scripts/dis.py up`.
+
 ## Getting started
 
 Follow the [running guide](docs/runbook.md) to start the Fabric network and CoreDNS services, run the signed registration and authorization workflow, and verify that the authoritative DNS zones match committed records.

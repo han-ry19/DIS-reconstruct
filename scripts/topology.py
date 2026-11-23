@@ -11,7 +11,7 @@ def positive(value, name, maximum):
 
 
 def load_topology(path=None, port_base=27000):
-    raw = yaml.safe_load(Path(path).read_text()) if path else {}
+    raw = path if isinstance(path, dict) else (yaml.safe_load(Path(path).read_text()) if path else {})
     if not isinstance(raw, dict):
         raise ValueError('Topology must be a mapping')
     allowed = {'organizations', 'peers_per_organization', 'orderers', 'endorsement_threshold', 'port_base', 'hosts', 'placement', 'domain', 'gateway_concurrency'}

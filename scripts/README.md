@@ -4,6 +4,7 @@ Run scripts from the repository root. The [running guide](../docs/runbook.md) gi
 
 | Script | Purpose |
 |---|---|
+| dis.py | Plan, start, inspect, and stop a deployment using config.yaml |
 | bootstrap.py | Install pinned Fabric, CoreDNS, and Redis tools |
 | network.py | Plan and manage configurable Fabric networks on one or more machines |
 | services.py | Manage Redis, the event publisher, CoreDNS, and the API |

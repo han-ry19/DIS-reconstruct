@@ -25,6 +25,10 @@ go build -o bin/ ./cmd/...
 
 The bootstrap script installs Fabric 2.4.9, the CoreDNS 1.12.0 release archive, and Redis 7.2.5 under runtime/tools. The build command creates dis-coredns with the Redis plugin used by the connected deployment. Offline release archives can be provided with --archive, --coredns-archive, and --redis-archive. See the [Fabric setup](../deploy/fabric/README.md) for network details.
 
+## Unified configuration
+
+The repository-root config.yaml combines topology, runtime directory, and service ports. See the [configuration guide](../config/README.md) for `python3 scripts/dis.py plan`, `up`, `status`, and `down`. The direct manager commands below retain their existing defaults.
+
 ## Start the system
 
 ```bash
