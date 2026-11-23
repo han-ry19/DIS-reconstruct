@@ -70,5 +70,18 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual([Path(c[0][1]).name for c in commands], ['services.py', 'network.py'])
 
 
+    def test_failed_start_does_not_report_ready(self):
+        from contextlib import redirect_stdout
+        from io import StringIO
+        import subprocess
+        cfg = self.load()
+        output = StringIO()
+        with redirect_stdout(output), patch.object(launcher.subprocess, 'run', side_effect=subprocess.CalledProcessError(1, ['network.py'])):
+            with self.assertRaises(subprocess.CalledProcessError):
+                launcher.execute(cfg, 'up')
+        self.assertIn('API listener: 127.0.0.1:38080', output.getvalue())
+        self.assertNotIn('DIS is ready', output.getvalue())
+
+
 if __name__ == '__main__':
     unittest.main()

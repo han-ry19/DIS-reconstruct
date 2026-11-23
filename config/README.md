@@ -56,3 +56,35 @@ The unified launcher's runtime value overrides the DIS_RUNTIME environment varia
 A runtime retains its topology. Use a new runtime directory and available ports for a different organization count, endorsement policy, node placement, or Gateway limit. Editing YAML does not reconfigure existing channel membership. To change service ports in the same runtime, stop the deployment first, edit the ports, and run up again.
 
 The default unified configuration is a separate deployment from the legacy default runtime. Check port availability and select the intended configuration before starting a second deployment.
+
+## Root launcher and startup logs
+
+After installation and build, start the configured deployment with:
+
+~~~bash
+./run.sh
+./run.sh status
+./run.sh down
+./run.sh plan
+./run.sh up --config config/experiment.yaml
+~~~
+
+With no arguments, run.sh selects up and the repository-root config.yaml. It uses .venv/bin/python when available, otherwise python3; set PYTHON to an interpreter path to override this choice. It can be invoked from another directory using its absolute path. A relative --config path is resolved from the caller's working directory.
+
+Startup prints timestamped configuration and progress messages: the configuration file, runtime directory, organization/peer/orderer counts, business domain, endorsement policy, per-peer Gateway concurrency, peer and orderer endpoints, API/DNS/Redis listeners, and log directories. These initial values describe the requested configuration. The final DIS is ready message is printed only after the network and service readiness checks succeed. Processes continue in the background after the launcher exits. Stop them with run.sh down using the same configuration.
+
+For the supplied configuration, the startup summary includes:
+
+~~~text
+Network: 4 organizations, 4 peers, 4 Raft orderers
+Gateway concurrency per peer: 500
+API listener: 127.0.0.1:38080 (TCP)
+DNS listener: 127.0.0.1:38530 (UDP/TCP)
+REDIS listener: 127.0.0.1:38679 (TCP)
+[1/2] Starting Fabric network and checking Gateway readiness...
+[2/2] Starting Redis, DNS publisher, CoreDNS, and API; checking readiness...
+DIS is ready
+API health: http://127.0.0.1:38080/healthz
+~~~
+
+The launcher streams manager output to the terminal. Detailed process logs remain under the runtime's fabric/ and services/ directories. For SSH-distributed nodes, their process logs are stored under the worker runtime's fabric/ directory.

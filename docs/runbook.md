@@ -27,7 +27,7 @@ The bootstrap script installs Fabric 2.4.9, the CoreDNS 1.12.0 release archive, 
 
 ## Unified configuration
 
-The repository-root config.yaml combines topology, runtime directory, and service ports. See the [configuration guide](../config/README.md) for `python3 scripts/dis.py plan`, `up`, `status`, and `down`. The direct manager commands below retain their existing defaults.
+Run `./run.sh` to start, `./run.sh status` to inspect, and `./run.sh down` to stop. Startup prints topology, listener ports, log directories, and readiness progress. The repository-root config.yaml combines topology, runtime directory, and service ports. See the [configuration guide](../config/README.md) for `python3 scripts/dis.py plan`, `up`, `status`, and `down`. The direct manager commands below retain their existing defaults.
 
 ## Start the system
 

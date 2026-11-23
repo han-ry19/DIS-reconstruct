@@ -24,7 +24,7 @@ Users and applications submit requests through the DIS API. Fabric contracts val
 
 ## Configuration
 
-Use [config.yaml](config.yaml) and the [configuration guide](config/README.md) to configure and launch a deployment with one file. Run `python3 scripts/dis.py plan`, then `python3 scripts/dis.py up`.
+Use [config.yaml](config.yaml) and the [configuration guide](config/README.md) to configure and launch a deployment with one file. Run `./run.sh plan`, then `./run.sh` to start with a configuration summary and readiness logs.
 
 ## Getting started
 
