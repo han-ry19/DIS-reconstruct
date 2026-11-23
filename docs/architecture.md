@@ -4,7 +4,7 @@ This project reconstructs the DNS identifier registration, management, authoriza
 
 ## Management
 
-The API accepts signed identity, data, authorization request, and owner-decision operations. Fabric peers execute the transitions under the chaincode endorsement policy. The API waits for a valid commit before reporting a successful update.
+The API accepts signed identity registration, data registration and update, authorization request, owner-decision, and authorization-update operations. Fabric peers execute the transitions under the chaincode endorsement policy. The API waits for a valid commit before reporting a successful update.
 
 Composite ledger keys separate identities, data objects, pending authorizations, and retry receipts. Decisions update the confirmed authorization map embedded in a data object. Transaction IDs identify committed results, while actor-scoped receipts support exact retries and event deduplication. The DNS serial counts committed business transitions.
 
@@ -19,3 +19,5 @@ CoreDNS runs the disredis plugin and reads the requested zone and relative label
 A valid Fabric commit completes the ledger operation. A matching authoritative DNS answer completes publication. The acceptance runner checks the event-driven projection and both full DNS zones without triggering publication itself.
 
 The [original implementation mapping](original-implementation.md) records the source revisions and component design used for the registration, authorization, and resolution workflow.
+
+Data and authorization field changes, ownership transfer, auxiliary ledger records, and recipient-removal events are described in [management operations](management-updates.md).

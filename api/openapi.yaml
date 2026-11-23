@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: DIS-reconstruct API
-  version: 0.2.0
+  version: 0.3.0
   description: Signed DIS operations through Fabric or the development file backend.
 servers:
   - url: http://localhost:28080
@@ -73,7 +73,7 @@ components:
         domain: {type: string}
         operation:
           type: string
-          enum: [identity.register, data.register, authorization.request, authorization.decide]
+          enum: [identity.register, data.register, data.update, authorization.request, authorization.decide, authorization.update]
         actor: {type: string}
         request_id: {type: string}
         timestamp: {type: integer, format: int64, description: Unix seconds}
@@ -81,6 +81,15 @@ components:
           type: object
           additionalProperties: false
           properties:
+            field:
+              type: string
+              description: 'data.update: URI, TXT, RP. authorization.update: status, permissions, recipient, expires_at.'
+            new_content:
+              type: string
+              description: 'Replacement field value; permissions is a JSON array string and expires_at is Unix seconds as a string.'
+            authorization_owner:
+              type: string
+              description: Original issuer of an existing authorization after an ownership transfer; defaults to the current owner.
             identity_id: {type: string}
             public_key: {type: string, description: Base64 Ed25519 public key}
             kind: {type: string, enum: [user, application]}

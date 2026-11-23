@@ -27,7 +27,7 @@ python3 scripts/acceptance.py --restart --all-gateways
 python3 scripts/acceptance-events.py
 ```
 
-An optional Redis integration test uses DIS_TEST_REDIS_ADDRESS pointing to an isolated instance. That test owns the DIS keys in the selected instance; use a separate test port.
+An optional Redis integration test uses DIS_TEST_REDIS_ADDRESS pointing to an isolated instance. These tests own the DIS keys in the selected instance; use a separate test port and go test -race -p 1 ./... to serialize the Redis test packages.
 
 Runtime acceptance reports contain concrete results. Generated identities, keys, ledgers, and logs remain outside version control. The [source mapping](original-implementation.md) connects the implemented registration, authorization, and resolution components to their upstream source references.
 
@@ -53,3 +53,7 @@ Topology validation, legacy address preservation, remote path rendering, and sta
 ~~~bash
 python3 -m unittest discover -s scripts -p 'test_*.py' -v
 ~~~
+
+## Management update verification
+
+The management completion was verified with three organizations, one peer per organization, three Raft orderers, and two-organization endorsement. The connected workflow checks all seven fields in Algorithms 7–8 of Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications. Unit tests also compare the emitted events with the committed snapshot after every successful operation. See [management operations](management-updates.md) for commands and covered cases.

@@ -2,7 +2,7 @@
 
 ## Deterministic data registration
 
-Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership's registration algorithm creates a data identifier using a UUID. In this reconstruction, the client supplies a UUID candidate bound to the request. The contract checks its format and uniqueness so endorsing peers can produce consistent results from the same input.
+Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership's registration algorithm creates a data identifier using a UUID. In this reconstruction, the client supplies a data identifier bound to the signed request. The contract checks that it is a valid single-label name under .data and is unique. It does not enforce UUIDv4. Every endorsing peer validates the same supplied input deterministically. UUID generation and validation would require an explicit implementation change.
 
 ## Owner decisions and Fabric endorsement
 
@@ -18,7 +18,7 @@ Following the original service and chaincode, a full snapshot initializes the pr
 
 ## Business scope
 
-The reconstruction covers identity registration and lookup, data registration and resolution, and authorization requests and decisions. Data addresses connect these records to external data services. Interfaces, configuration, and acceptance scenarios follow this workflow.
+The reconstruction covers identity registration and lookup, data registration, updates and resolution, and authorization requests, decisions and updates. Data addresses connect these records to external data services. Interfaces, configuration, and acceptance scenarios follow this workflow.
 
 ## Request authentication and retries
 
@@ -36,8 +36,10 @@ The development backend persists an atomic JSON state document and uses a single
 
 ## DNS record encoding
 
-The projection follows Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications's identity CERT/TXT, data RP/URI/TXT, and authorization TXT structure. For Ed25519 key material, CERT type 254 carries an OID-length byte, the DER OID value for 1.3.101.112, and the raw key. Data profiles use a separate _profile TXT name. Full AXFR verification compares all authoritative records, including SOA serials, with the committed snapshot.
+The projection follows Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications's identity CERT/TXT, data RP/URI/TXT, and authorization TXT structure. For Ed25519 key material, CERT type 254 carries an OID-length byte, the DER OID value for 1.3.101.112, and the raw key. Data profiles remain registration metadata and are not exposed at an additional DNS name. Full AXFR verification compares all authoritative records, including SOA serials, with the committed snapshot.
 
 ## Completion timestamps
 
 The result field committed_at records the execution timestamp used by the transition. In Fabric it is the transaction timestamp; a successful HTTP result additionally requires a valid commit status. It is not an instrumented peer database commit time.
+
+Data and authorization field updates follow Algorithms 7–8 of Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications. The [management guide](management-updates.md) documents ownership transfer, recipient moves, restored historical key families, and retained reconstruction compatibility.

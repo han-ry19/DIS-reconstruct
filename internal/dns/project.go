@@ -64,11 +64,7 @@ func Project(s domain.State) (map[string][]mdns.RR, error) {
 			return nil, fmt.Errorf("invalid data name: %s", d.ID)
 		}
 		zones["data."] = append(zones["data."], &mdns.RP{Hdr: header(d.ID, mdns.TypeRP), Mbox: mdns.Fqdn(d.OwnerID), Txt: "."}, &mdns.URI{Hdr: header(d.ID, mdns.TypeURI), Priority: 0, Weight: 0, Target: d.Address}, text(d.ID, d.DataSig))
-		profile, e := json.Marshal(d.Profile)
-		if e != nil {
-			return nil, e
-		}
-		zones["data."] = append(zones["data."], text("_profile."+d.ID, string(profile)))
+
 	}
 	for _, a := range s.Authorizations {
 		if !IdentityName(a.Recipient) {

@@ -10,9 +10,11 @@ The reconstruction covers the following capabilities:
 |---|---|
 | Identity registration and lookup | Bind a user or application identity to its public key |
 | Data registration | Bind a data identifier to its owner, address, signature, and profile |
+| Data updates | Change the address, data signature, or current owner |
 | Data resolution | Retrieve the attributes associated with a data identifier |
 | Authorization requests | Record an application's requested permissions and expiration time |
 | Owner decisions | Approve or reject a pending request |
+| Authorization updates | Change status, permissions, recipient, or expiration |
 | Authorization resolution | Retrieve authorization status, permissions, and expiration |
 | DNS publication | Publish committed identifier and authorization records through CoreDNS |
 
@@ -26,6 +28,7 @@ Follow the [running guide](docs/runbook.md) to start the Fabric network and Core
 
 ## Documentation
 
+- [Data and authorization management](docs/management-updates.md)
 - [Architecture](docs/architecture.md)
 - [Mapping to Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership and Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications](docs/dia-mapping.md)
 - [Implementation decisions](docs/decisions.md)

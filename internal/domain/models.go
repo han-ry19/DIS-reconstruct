@@ -40,17 +40,20 @@ type AuthorizationRecord struct {
 
 // Parameters are typed and serialized in a fixed order for request signing.
 type Parameters struct {
-	IdentityID    string              `json:"identity_id,omitempty"`
-	PublicKey     string              `json:"public_key,omitempty"`
-	Kind          string              `json:"kind,omitempty"`
-	DataID        string              `json:"data_id,omitempty"`
-	Address       string              `json:"address,omitempty"`
-	DataSignature string              `json:"data_signature,omitempty"`
-	Profile       *DataProfile        `json:"profile,omitempty"`
-	Recipient     string              `json:"recipient,omitempty"`
-	Permissions   []string            `json:"permissions,omitempty"`
-	ExpiresAt     int64               `json:"expires_at,omitempty"`
-	Status        AuthorizationStatus `json:"status,omitempty"`
+	Field              string              `json:"field,omitempty"`
+	NewContent         string              `json:"new_content,omitempty"`
+	AuthorizationOwner string              `json:"authorization_owner,omitempty"`
+	IdentityID         string              `json:"identity_id,omitempty"`
+	PublicKey          string              `json:"public_key,omitempty"`
+	Kind               string              `json:"kind,omitempty"`
+	DataID             string              `json:"data_id,omitempty"`
+	Address            string              `json:"address,omitempty"`
+	DataSignature      string              `json:"data_signature,omitempty"`
+	Profile            *DataProfile        `json:"profile,omitempty"`
+	Recipient          string              `json:"recipient,omitempty"`
+	Permissions        []string            `json:"permissions,omitempty"`
+	ExpiresAt          int64               `json:"expires_at,omitempty"`
+	Status             AuthorizationStatus `json:"status,omitempty"`
 }
 type Request struct {
 	Domain     string     `json:"domain"`

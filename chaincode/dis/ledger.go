@@ -119,16 +119,32 @@ func loadRequest(stub shim.ChaincodeStubInterface, m metadata, r domain.Request)
 			for k, a := range d.Authorizations {
 				s.Authorizations[k] = a
 			}
-			recipient := r.Parameters.Recipient
-			if r.Operation == "authorization.request" {
-				recipient = r.Actor
+			if r.Operation == "data.update" && r.Parameters.Field == "RP" || r.Operation == "authorization.update" && r.Parameters.Field == "recipient" {
+				var next domain.Identity
+				if found, err := read(stub, identityKind, &next, r.Parameters.NewContent); err != nil {
+					return s, d, err
+				} else if found {
+					s.Identities[next.ID] = next
+				}
 			}
-			var a domain.AuthorizationRecord
-			if found, e := read(stub, pendingKind, &a, d.Data.ID, d.Data.OwnerID, recipient); e != nil {
-				return s, d, e
-			} else if found {
+			it, err := stub.GetStateByPartialCompositeKey(pendingKind, []string{d.Data.ID})
+			if err != nil {
+				return s, d, err
+			}
+			for it.HasNext() {
+				entry, err := it.Next()
+				if err != nil {
+					it.Close()
+					return s, d, err
+				}
+				var a domain.AuthorizationRecord
+				if err = json.Unmarshal(entry.Value, &a); err != nil {
+					it.Close()
+					return s, d, err
+				}
 				s.Authorizations[domain.AuthorizationKey(a.DataID, a.OwnerID, a.Recipient)] = a
 			}
+			it.Close()
 		}
 	}
 	return s, d, nil
@@ -209,12 +225,13 @@ func snapshot(stub shim.ChaincodeStubInterface, m metadata) (domain.State, error
 	return s, e
 }
 func persist(stub shim.ChaincodeStubInterface, s domain.State, r domain.Request, d dataObject, result domain.Result) error {
+	before := d
 	switch r.Operation {
 	case "identity.register":
 		if e := put(stub, identityKind, s.Identities[result.ObjectID], result.ObjectID); e != nil {
 			return e
 		}
-	case "data.register":
+	case "data.register", "data.update":
 		d.Data = s.Data[result.ObjectID]
 		if e := put(stub, dataKind, d, result.ObjectID); e != nil {
 			return e
@@ -222,6 +239,10 @@ func persist(stub shim.ChaincodeStubInterface, s domain.State, r domain.Request,
 	case "authorization.request":
 		a := s.Authorizations[result.ObjectID]
 		if e := put(stub, pendingKind, a, a.DataID, a.OwnerID, a.Recipient); e != nil {
+			return e
+		}
+	case "authorization.update":
+		if e := persistAuthorizationUpdate(stub, s, r, d, result); e != nil {
 			return e
 		}
 	case "authorization.decide":
@@ -233,6 +254,9 @@ func persist(stub shim.ChaincodeStubInterface, s domain.State, r domain.Request,
 		if e := remove(stub, pendingKind, a.DataID, a.OwnerID, a.Recipient); e != nil {
 			return e
 		}
+	}
+	if e := persistSourceIndexes(stub, s, r, before, result); e != nil {
+		return e
 	}
 	if e := put(stub, receiptKind, s.Receipts[r.Actor+"|"+r.RequestID], r.Actor, r.RequestID); e != nil {
 		return e

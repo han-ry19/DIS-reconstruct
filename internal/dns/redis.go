@@ -243,6 +243,17 @@ func SaveProjection(address string, p ProjectionCheckpoint, full bool) error {
 	if e = c.Send("MULTI"); e != nil {
 		return e
 	}
+	if !full && p.Change != nil {
+		for _, old := range p.Change.RemovedAuthorizations {
+			label := strings.TrimSuffix(AuthorizationName(old), ".data.")
+			if e = c.Send("HDEL", "data.", label); e != nil {
+				return e
+			}
+			if e = c.Send("HDEL", "_dis:authorizations", domain.AuthorizationKey(old.DataID, old.OwnerID, old.Recipient)); e != nil {
+				return e
+			}
+		}
+	}
 	if full || p.Change != nil {
 		for _, zone := range []string{"uid.", "data."} {
 			target := zone
@@ -346,16 +357,19 @@ func ApplyChange(s *domain.State, c domain.Change) error {
 			return fmt.Errorf("missing identity")
 		}
 		s.Identities[c.Identity.ID] = *c.Identity
-	case "data.register":
+	case "data.register", "data.update":
 		if c.Data == nil {
 			return fmt.Errorf("missing data")
 		}
 		s.Data[c.Data.ID] = *c.Data
-	case "authorization.request", "authorization.decide":
+	case "authorization.request", "authorization.decide", "authorization.update":
 		if c.Authorization == nil {
 			return fmt.Errorf("missing authorization")
 		}
 		a := *c.Authorization
+		for _, old := range c.RemovedAuthorizations {
+			delete(s.Authorizations, domain.AuthorizationKey(old.DataID, old.OwnerID, old.Recipient))
+		}
 		s.Authorizations[domain.AuthorizationKey(a.DataID, a.OwnerID, a.Recipient)] = a
 	default:
 		return fmt.Errorf("unknown event operation")

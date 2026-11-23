@@ -132,6 +132,16 @@ func Apply(s *State, r Request, now int64) (Result, error) {
 		}
 		object = p.DataID
 		s.Data[object] = DataIdentifier{ID: object, OwnerID: r.Actor, Address: p.Address, DataSig: p.DataSignature, Profile: *p.Profile, CreatedAt: now}
+	case "data.update":
+		object, err = updateData(s, r)
+		if err != nil {
+			return fail(err)
+		}
+	case "authorization.update":
+		object, err = updateAuthorization(s, r)
+		if err != nil {
+			return fail(err)
+		}
 	case "authorization.request":
 		data, ok := s.Data[p.DataID]
 		if !ok {
@@ -149,6 +159,13 @@ func Apply(s *State, r Request, now int64) (Result, error) {
 				return fail(ErrInvalid)
 			}
 			seen[v] = true
+		}
+		// DNS authorization names contain data and recipient, not the issuer.
+		// Preserve existing grants across transfer without creating a second TXT.
+		for _, a := range s.Authorizations {
+			if a.DataID == p.DataID && a.Recipient == r.Actor && a.OwnerID != data.OwnerID {
+				return fail(ErrConflict)
+			}
 		}
 		object = AuthorizationKey(p.DataID, data.OwnerID, r.Actor)
 		// DIA Algorithm 2 writes the requested pending record at its composite key.

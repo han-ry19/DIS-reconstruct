@@ -92,12 +92,17 @@ func (c *Contract) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 			case "identity.register":
 				v := s.Identities[result.ObjectID]
 				change.Identity = &v
-			case "data.register":
+			case "data.register", "data.update":
 				v := s.Data[result.ObjectID]
 				change.Data = &v
 			default:
 				v := s.Authorizations[result.ObjectID]
 				change.Authorization = &v
+				if request.Operation == "authorization.update" && request.Parameters.Field == "recipient" && request.Parameters.NewContent != request.Parameters.Recipient {
+					old := v
+					old.Recipient = request.Parameters.Recipient
+					change.RemovedAuthorizations = []domain.AuthorizationRecord{old}
+				}
 			}
 			b, e := json.Marshal(change)
 			if e != nil {
@@ -108,6 +113,12 @@ func (c *Contract) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 			}
 		}
 		return success(result)
+	case "GetOwnedData", "GetAuthorizedData", "TransDOIToIndex", "TransIndexToDOI", "GetTransactionInfo":
+		b, err := indexQuery(stub, m, function, args)
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		return shim.Success(b)
 	case "GetSnapshot":
 		if len(args) != 0 {
 			return shim.Error("GetSnapshot takes no arguments")

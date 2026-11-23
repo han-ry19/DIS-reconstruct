@@ -26,7 +26,7 @@ func TestProjectionAndPublication(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	if len(zones["uid."]) != 7 || len(zones["data."]) != 8 {
+	if len(zones["uid."]) != 7 || len(zones["data."]) != 7 {
 		t.Fatal("missing records")
 	}
 	for _, records := range zones {

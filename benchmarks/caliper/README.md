@@ -41,3 +41,15 @@ The default five-organization topology retains Fabric 2.4.9's Gateway concurrenc
 All generated configurations, reports, dependency installations, and measurement samples remain under runtime and are ignored by Git. The network configuration references private key paths; keep generated artifacts within the experiment environment. The repository contains reusable workload code and portable instructions.
 
 After measurements, stop the isolated deployment with services.py down and network.py down under the same DIS_RUNTIME.
+
+## Comparison with the source papers
+
+The fixed-size blockchain experiments are Figure 5 (PDF page 9) of Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership and Figure 12 (PDF pages 31–32) of Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications. Both use five peers, five orderers, majority endorsement and sending rates from 50 to 450 TPS. Their descriptions do not specify a reproducible operation mixture, round duration, repetition count, Gateway limit or block timeout. Record these as reconstruction settings. DiSAuth is related literature, not a source of missing experiment parameters.
+
+A complete sending-rate sweep can be run with:
+
+~~~bash
+python3 scripts/benchmark-caliper.py --rates 50,100,150,200,250,300,350,400,450 --duration 30 --repetitions 3 --workers 4 --out runtime/benchmarks/caliper-full-sweep
+~~~
+
+This command measures the current data-registration implementation. Preserve actual offered rates, successful commit throughput, failures and latency alongside the topology, effective configuration and source revision. Compare implementations under identical operation semantics, hardware placement, endorsement and block settings. DNS query throughput and management-to-DNS visibility require separate measurements.
