@@ -49,11 +49,11 @@ Limits are measured in UTF-8 bytes. Addresses accept up to 1024 bytes for both r
 
 ## Ownership and recipient changes
 
-An RP update changes the data owner and preserves existing authorization records, consistent with Algorithm 7's single-field update. The former owner cannot make subsequent changes. The new owner can manage an existing grant by naming its original authorization_owner. This parameter selects the issuer in the data/issuer/recipient storage key.
+An RP update changes the data owner and preserves existing authorization records, consistent with Algorithm 7's single-field update. The former owner cannot make subsequent changes. The new owner can manage an existing grant by naming its original authorization_owner. This parameter must match the issuer retained in the data/recipient authorization record.
 
 DNS authorization names contain the recipient and data identifier. Changing recipient removes the old authorization key and DNS label before publishing the replacement. A collision with another confirmed or pending authorization is rejected, including authorizations retained from a previous owner. An application cannot create a second issuer-specific grant at the same DNS name after ownership transfer; the current owner can edit the existing record.
 
-A pending request can overlay an earlier decision at the same composite key. Updating or moving that pending record also removes the shadowed confirmed entry when necessary, so a snapshot or restart cannot resurrect the previous grant. Non-status field updates preserve the existing status and issuance time; changing status through the field-update operation also leaves the issuance attribute unchanged. The owner-decision operation sets issuance time when deciding a request.
+A pending request replaces an earlier decision in the same data/recipient record. Updating or moving that record cannot reveal an older grant after a snapshot or restart. Non-status field updates preserve the existing status and issuance time; changing status through the field-update operation also leaves the issuance attribute unchanged. The owner-decision operation sets issuance time when deciding a request.
 
 ## Ledger records and queries
 
@@ -64,12 +64,15 @@ The reconstruction maintains these auxiliary ledger records:
 | DOIToIndex / IndexToDOI | Reversible identifier mappings; raw byte values |
 | dataOwner-dataObject | Owner-to-data association |
 | DOAuthorized | Recipient-to-data association |
-| TransactionInfo | Creation time, latest transaction ID and update time |
+| TransactionInfo | Data and identity transaction information |
+| AuthorizationTransactionInfo | Per-data/recipient authorization transaction information |
 | RegistrationData | Registration description |
 
 The internal index encodes the transaction ID and identifier using Base64. New registrations write mappings, associations, transaction information, and registration metadata. Updates maintain the affected associations and transaction information. Timestamps use Unix seconds.
 
-The contract exposes TransDOIToIndex, TransIndexToDOI, GetTransactionInfo, GetOwnedData, and GetAuthorizedData, each taking one identifier (TransIndexToDOI takes an internal index). The list queries validate authoritative business records, with approved status and unexpired authorization required for recipient access. Fresh deployments query the owner's or recipient's association index and validate each referenced business record, including pending overlays and expiration. Earlier deployments retain the snapshot lookup to include records created before index maintenance; a fresh runtime enables the indexed path.
+GetTransactionInfo combines object and per-recipient transaction information when queried; management writes do not update a shared latest-transaction record. It selects the greatest execution timestamp (seconds and nanoseconds), with transaction ID as a deterministic tie-breaker. This is execution-time metadata, not a global commit-order counter.
+
+The contract exposes TransDOIToIndex, TransIndexToDOI, GetTransactionInfo, GetOwnedData, and GetAuthorizedData, each taking one identifier (TransIndexToDOI takes an internal index). The list queries validate authoritative business records, with approved status and unexpired authorization required for recipient access. Fresh deployments query the owner's or recipient's association index and validate each referenced business record, including pending status and expiration. Earlier deployments retain the snapshot lookup to include records created before index maintenance; a fresh runtime enables the indexed path.
 
 ## Event publication
 
@@ -102,3 +105,13 @@ go test -race -count=1 -v ./internal/fabric -run TestLiveFabricManagementUpdates
 ~~~
 
 The unit tests cover all seven fields, rejected changes with unchanged state, ownership transfer, collisions, pending/confirmed overlays, exact retries, HTTP persistence, event/snapshot equivalence, Redis key deletion, and recovery. The integration workflow commits fourteen transactions and checks all seven update fields.
+
+## Concurrent authorization verification
+
+The isolated read/write-set test checks that different-recipient operations have no shared writes or range reads. It also checks conflicts for the same authorization, recipient collisions, and ownership changes. The live Fabric test endorses all requests in each group before submitting any of them, then verifies every commit status:
+
+~~~bash
+DIS_FABRIC_CONFIG="$DIS_RUNTIME/fabric/gateway.json" go test ./internal/fabric -run TestLiveFabricIndependentAuthorizations -count=1 -v
+~~~
+
+It covers four recipients of one data object for requests, decisions, and updates. Separate cases verify MVCC rejection of conflicting same-authorization updates and an operation endorsed before an ownership transfer.

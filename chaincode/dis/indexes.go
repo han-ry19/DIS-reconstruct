@@ -18,11 +18,12 @@ const transactionKind = "TransactionInfo"
 const registrationKind = "RegistrationData"
 
 type transactionInfo struct {
-	Identifier    string `json:"identifier"`
-	Index         string `json:"index"`
-	TransactionID string `json:"transaction_id"`
-	CreatedAt     int64  `json:"created_at"`
-	UpdatedAt     int64  `json:"updated_at"`
+	Identifier     string `json:"identifier"`
+	Index          string `json:"index"`
+	TransactionID  string `json:"transaction_id"`
+	CreatedAt      int64  `json:"created_at"`
+	UpdatedAt      int64  `json:"updated_at"`
+	UpdatedAtNanos int32  `json:"updated_at_nanos,omitempty"`
 }
 
 func rawIndex(stub shim.ChaincodeStubInterface, kind, id string) (string, error) {
@@ -88,6 +89,7 @@ func touchTransaction(stub shim.ChaincodeStubInterface, id string, created int64
 	}
 	info.TransactionID = stub.GetTxID()
 	info.UpdatedAt = ts.Seconds
+	info.UpdatedAtNanos = ts.Nanos
 	return put(stub, transactionKind, info, index)
 }
 func persistSourceIndexes(stub shim.ChaincodeStubInterface, s domain.State, r domain.Request, before dataObject, result domain.Result) error {
@@ -131,7 +133,7 @@ func persistSourceIndexes(stub shim.ChaincodeStubInterface, s domain.State, r do
 				return e
 			}
 		}
-		return touchTransaction(stub, a.DataID, s.Data[a.DataID].CreatedAt)
+		return authorizationTransaction(stub, a, s.Data[a.DataID].CreatedAt)
 	}
 	return nil
 }
@@ -185,6 +187,14 @@ func indexedData(stub shim.ChaincodeStubInterface, m metadata, actor, kind strin
 		if !exists {
 			continue
 		}
+		if m.IndependentAuthorizations && kind == authorizedIndexKind {
+			var a domain.AuthorizationRecord
+			if ok, err := read(stub, authorizationKind, &a, id, actor); err != nil {
+				return nil, err
+			} else if ok {
+				d.Authorizations[domain.AuthorizationKey(a.DataID, a.OwnerID, a.Recipient)] = a
+			}
+		}
 		allowed := d.Data.OwnerID == actor
 		if !allowed && kind == authorizedIndexKind {
 			for _, a := range d.Authorizations {
@@ -192,7 +202,11 @@ func indexedData(stub shim.ChaincodeStubInterface, m metadata, actor, kind strin
 					continue
 				}
 				var pending domain.AuthorizationRecord
-				overlaid, err := read(stub, pendingKind, &pending, a.DataID, a.OwnerID, a.Recipient)
+				overlaid := false
+				var err error
+				if !m.IndependentAuthorizations {
+					overlaid, err = read(stub, pendingKind, &pending, a.DataID, a.OwnerID, a.Recipient)
+				}
 				if err != nil {
 					return nil, err
 				}
@@ -280,6 +294,10 @@ func indexQuery(stub shim.ChaincodeStubInterface, m metadata, function string, a
 		}
 		if !ok {
 			return nil, domain.ErrNotFound
+		}
+		v, e = latestAuthorizationTransaction(stub, args[0], v)
+		if e != nil {
+			return nil, e
 		}
 		return json.Marshal(v)
 	default:

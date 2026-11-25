@@ -10,15 +10,15 @@ The data owner decides application permissions. Fabric peers verify the signed o
 
 ## Ledger organization
 
-Fabric stores identities, data objects, pending authorizations, and receipts under composite keys. Decided authorizations are embedded in data objects. Identifier mappings, owner and recipient associations, transaction information, and registration metadata support management queries. The object layout is an implementation choice; the DNS projection defines the externally resolved records. Performance reports should identify this layout and its write sets.
+Fabric stores identities, data objects, authorizations, and receipts under composite keys. Pending and decided authorizations use independent data/recipient records, retaining the issuer in their values. Identifier mappings, owner and recipient associations, transaction information, and registration metadata support management queries. The object layout is an implementation choice; the DNS projection defines the externally resolved records. Performance reports should identify this layout and its write sets.
 
-Fresh ledgers identify successful transitions by transaction ID and actor-scoped receipts. Snapshots derive the publication sequence from committed receipts, keeping unrelated registrations' write sets independent. Existing ledgers retain their sequence format. MigrateState converts the earlier dis.state.v1 document to object records.
+Fresh ledgers identify successful transitions by transaction ID and actor-scoped receipts. Snapshots derive the publication sequence from committed receipts, keeping unrelated registrations' write sets independent. MigrateState converts earlier document and embedded-authorization layouts to independent authorizations and receipt-derived sequencing while preserving the published sequence.
 
 The development backend stores an atomic JSON document protected by a single-writer lock.
 
 ## Authorization updates
 
-A newly signed authorization request writes a pending record at the data/owner/recipient key. An owner decision sets status and issuance time while retaining the requested permissions and expiration. Field updates follow Algorithms 7–8 of *Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications*. See [management operations](management-updates.md) for ownership transfer, recipient changes, and pending-record behavior.
+A newly signed authorization request writes a pending record at the data/recipient key. Reapplication under the same issuer replaces the record according to the existing workflow; a different issuer cannot create a conflicting record at that name. An owner decision sets status and issuance time while retaining the requested permissions and expiration. Field updates follow Algorithms 7–8 of *Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications*. See [management operations](management-updates.md) for ownership transfer, recipient changes, and pending-record behavior.
 
 ## DNS publication
 

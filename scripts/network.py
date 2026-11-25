@@ -227,7 +227,7 @@ def configure(topology):
         raise RuntimeError('Install Fabric tools using scripts/bootstrap.py first')
     peers, orderers = nodes(topology)
     m = dict(base=topology['port_base'], domain=topology['domain'], processes={}, phase='configured', packages={},
-             ledger_schema=2, definition_sequence=1, publication_digest_version=2,
+             ledger_schema=3, definition_sequence=1, publication_digest_version=2,
              topology=topology, peers=peers, orderers=orderers)
     check_ports(m)
     write(WORK / 'crypto.json', dict(

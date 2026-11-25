@@ -40,8 +40,16 @@ func TestMigrateLegacyObjectsAndReceipts(t *testing.T) {
 		t.Fatal(got)
 	}
 	d, ok, e := object(stub, "sample.data")
-	if e != nil || !ok || len(d.Authorizations) != 1 {
-		t.Fatalf("confirmed authorization not embedded: %v %v", d, e)
+	if e != nil || !ok || len(d.Authorizations) != 0 {
+		t.Fatalf("authorization still embedded: %v %v", d, e)
+	}
+	var migrated domain.AuthorizationRecord
+	if ok, err := read(stub, authorizationKind, &migrated, "sample.data", "app.uid"); err != nil || !ok || migrated.Status != domain.AuthorizationApproved {
+		t.Fatal("missing independent authorization", err)
+	}
+	m, err := getMetadata(stub)
+	if err != nil || !m.IndependentAuthorizations || !m.ReceiptSequence {
+		t.Fatal("incomplete migration", m, err)
 	}
 	var receipt domain.Receipt
 	if ok, e := read(stub, receiptKind, &receipt, "alice.uid", "call"); e != nil || !ok || receipt.Digest != "original" {

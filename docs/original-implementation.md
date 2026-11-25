@@ -4,7 +4,7 @@ This document describes the reconstruction’s ledger layout and DNS publication
 
 ## Ledger and management
 
-The reconstruction uses separate storage of data objects and pending authorization requests. Decided authorizations are embedded in the data object, so an owner decision reads and updates that object. Auxiliary key families provide identifier mappings, owner and recipient associations, transaction information, and registration metadata.
+The reconstruction stores data objects and authorization records separately. Each authorization is keyed by data identifier and recipient; its value retains the issuer, status, permissions, and expiration. Requests and decisions update the same authorization record. Auxiliary key families provide identifier mappings, owner and recipient associations, transaction information, and registration metadata.
 
 The signed API implements identity.register, data.register, data.update, authorization.request, authorization.decide, and authorization.update. Data and authorization updates follow the paper algorithms documented in [management operations](management-updates.md).
 
@@ -22,7 +22,7 @@ CoreDNS is built with plugin/disredis. Ordinary queries use HGET; AXFR uses HGET
 
 [config.yaml](../config.yaml) selects organization counts, peer replicas, Raft orderers, endorsement, and machine placement. The API, publisher, Redis, and CoreDNS run on the controller.
 
-For an earlier single-document deployment, stop its services and network, build the current commands, select its DIS_RUNTIME, and run scripts/upgrade-ledger.py. The script advances the chaincode definition and invokes MigrateState to preserve identifiers and receipts while converting the ledger. Migration is idempotent. The script saves the prior dns/status.json under reconstruction-backup before publication with the current digest format. Fresh deployments start with the object layout.
+For an earlier single-document or embedded-authorization deployment, stop its services and network, build the current commands, select its DIS_RUNTIME, and run scripts/upgrade-ledger.py. The script advances the chaincode definition and invokes MigrateState to preserve identifiers and receipts while converting the ledger. Migration is idempotent. The script saves the prior dns/status.json under reconstruction-backup before publication with the current digest format. Fresh deployments start with independent authorization records. Migration preserves the visible authorization state, including pending records that superseded an earlier decision, and retains request receipts. Run the upgrade during a maintenance window with management writes stopped. The current chaincode requires migration before accepting writes from an older ledger layout.
 
 ## Publication path and measurement
 
@@ -30,8 +30,10 @@ The reconstruction uses committed events to update Redis and serves queries thro
 
 Report the current implementation as the event-driven Redis path. Measure valid Fabric commit, commit-to-authoritative-DNS visibility, and authoritative query latency separately. Query throughput measures the serving path after publication; it does not measure synchronization delay. A periodic-retrieval variant would need its own implementation and explicit polling settings before comparison; changing the event reconnect interval does not reproduce Algorithm 9.
 
-## Shared-object concurrency
+## Authorization concurrency
 
-Confirmed authorizations are currently embedded in their data object. Decisions and authorization updates for the same data object read and write a shared Fabric key, even when their recipients differ. Transactions endorsed against the same version compete at validation: after one valid update, another with the stale read version fails MVCC validation. Requests that execute against successive committed versions can both succeed. Per-data transaction metadata and range reads must also be considered when changing storage granularity.
+Different recipients have different authorization keys. Management operations read the target authorization directly; a recipient move also reads its destination to detect collisions. Each operation reads the data object to validate current ownership, but authorization changes do not rewrite that object. Authorization transaction information is stored per data/recipient, avoiding a shared per-data write.
 
-Authorization benchmarks should distinguish operations distributed across data objects from operations concentrated on one object. Report offered load, valid commits, MVCC invalidations, other failures, and retry policy separately.
+Different-recipient approvals and updates can therefore commit after endorsement against the same state. Concurrent changes to one authorization, moves to the same recipient, and an ownership transfer that invalidates a pending authorization operation retain MVCC protection. A data-field update can also invalidate an authorization operation that read the previous data-object version.
+
+Authorization benchmarks should distinguish distributed data objects, multiple recipients of one object, and repeated updates to one authorization. Report offered load, valid commits, MVCC invalidations, other failures, and retry policy separately.

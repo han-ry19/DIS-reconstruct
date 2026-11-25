@@ -9,7 +9,7 @@ func (b *Backend) Events(ctx context.Context, checkpoint client.Checkpoint) (<-c
 	return b.network.ChaincodeEvents(ctx, b.chaincode, client.WithStartBlock(0), client.WithCheckpoint(checkpoint))
 }
 
-// MigrateState submits the deterministic v1-to-v2 ledger conversion.
+// MigrateState submits the deterministic ledger conversion to independent authorizations.
 func (b *Backend) MigrateState() error {
 	_, e := b.contract.SubmitTransaction("MigrateState")
 	return e

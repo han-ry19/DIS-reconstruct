@@ -25,7 +25,7 @@ func (c *Contract) Init(stub shim.ChaincodeStubInterface) pb.Response {
 			return shim.Error("already initialized")
 		}
 	}
-	if e := putMetadata(stub, metadata{Domain: args[0], ReceiptSequence: true, IndexedQueries: true}); e != nil {
+	if e := putMetadata(stub, metadata{Domain: args[0], ReceiptSequence: true, IndexedQueries: true, IndependentAuthorizations: true}); e != nil {
 		return shim.Error(e.Error())
 	}
 	return shim.Success(nil)
@@ -39,6 +39,9 @@ func (c *Contract) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		if e := migrate(stub); e != nil {
 			return shim.Error(e.Error())
 		}
+		if e := migrateAuthorizations(stub); e != nil {
+			return shim.Error(e.Error())
+		}
 		return shim.Success(nil)
 	}
 	m, e := getMetadata(stub)
@@ -47,6 +50,9 @@ func (c *Contract) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	}
 	switch function {
 	case "Submit":
+		if !m.IndependentAuthorizations {
+			return shim.Error("run MigrateState before submitting to this ledger version")
+		}
 		if len(args) != 1 {
 			return shim.Error("Submit requires signed request JSON")
 		}
@@ -156,6 +162,17 @@ func (c *Contract) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	case "GetAuthorization":
 		if len(args) != 3 {
 			return shim.Error("GetAuthorization requires data, owner, recipient")
+		}
+		if m.IndependentAuthorizations {
+			var a domain.AuthorizationRecord
+			ok, err := read(stub, authorizationKind, &a, args[0], args[2])
+			if err != nil {
+				return shim.Error(err.Error())
+			}
+			if !ok || a.OwnerID != args[1] {
+				return shim.Error("not found")
+			}
+			return success(a)
 		}
 		var a domain.AuthorizationRecord
 		ok, e := read(stub, pendingKind, &a, args...)

@@ -18,10 +18,11 @@ const pendingKind = "AuthorizationUnconfirmed"
 const receiptKind = "RequestReceipt"
 
 type metadata struct {
-	IndexedQueries  bool
-	ReceiptSequence bool
-	Domain          string
-	Sequence        uint64
+	IndependentAuthorizations bool
+	IndexedQueries            bool
+	ReceiptSequence           bool
+	Domain                    string
+	Sequence                  uint64
 }
 type dataObject struct {
 	Data           domain.DataIdentifier                 `json:"data"`
@@ -128,24 +129,35 @@ func loadRequest(stub shim.ChaincodeStubInterface, m metadata, r domain.Request)
 					s.Identities[next.ID] = next
 				}
 			}
-			it, err := stub.GetStateByPartialCompositeKey(pendingKind, []string{d.Data.ID})
-			if err != nil {
-				return s, d, err
-			}
-			for it.HasNext() {
-				entry, err := it.Next()
+			if m.IndependentAuthorizations {
+				if err := loadAuthorization(stub, &s, d.Data.ID, r.Parameters.Recipient); err != nil {
+					return s, d, err
+				}
+				if r.Operation == "authorization.update" && r.Parameters.Field == "recipient" {
+					if err := loadAuthorization(stub, &s, d.Data.ID, r.Parameters.NewContent); err != nil {
+						return s, d, err
+					}
+				}
+			} else {
+				it, err := stub.GetStateByPartialCompositeKey(pendingKind, []string{d.Data.ID})
 				if err != nil {
-					it.Close()
 					return s, d, err
 				}
-				var a domain.AuthorizationRecord
-				if err = json.Unmarshal(entry.Value, &a); err != nil {
-					it.Close()
-					return s, d, err
+				for it.HasNext() {
+					entry, err := it.Next()
+					if err != nil {
+						it.Close()
+						return s, d, err
+					}
+					var a domain.AuthorizationRecord
+					if err = json.Unmarshal(entry.Value, &a); err != nil {
+						it.Close()
+						return s, d, err
+					}
+					s.Authorizations[domain.AuthorizationKey(a.DataID, a.OwnerID, a.Recipient)] = a
 				}
-				s.Authorizations[domain.AuthorizationKey(a.DataID, a.OwnerID, a.Recipient)] = a
+				it.Close()
 			}
-			it.Close()
 		}
 	}
 	return s, d, nil
@@ -206,6 +218,19 @@ func snapshot(stub shim.ChaincodeStubInterface, m metadata) (domain.State, error
 	if e != nil {
 		return s, e
 	}
+	if m.IndependentAuthorizations {
+		e = scan(stub, authorizationKind, func(b []byte) error {
+			var a domain.AuthorizationRecord
+			if err := json.Unmarshal(b, &a); err != nil {
+				return err
+			}
+			s.Authorizations[domain.AuthorizationKey(a.DataID, a.OwnerID, a.Recipient)] = a
+			return nil
+		})
+		if e != nil {
+			return s, e
+		}
+	}
 	if m.ReceiptSequence {
 		s.ReceiptSequence = true
 		s.AppliedRequests = map[string]bool{}
@@ -227,33 +252,44 @@ func snapshot(stub shim.ChaincodeStubInterface, m metadata) (domain.State, error
 }
 func persist(stub shim.ChaincodeStubInterface, s domain.State, r domain.Request, d dataObject, result domain.Result) error {
 	before := d
-	switch r.Operation {
-	case "identity.register":
-		if e := put(stub, identityKind, s.Identities[result.ObjectID], result.ObjectID); e != nil {
-			return e
+	m, err := getMetadata(stub)
+	if err != nil {
+		return err
+	}
+	independent := m.IndependentAuthorizations && strings.HasPrefix(r.Operation, "authorization.")
+	if independent {
+		if err := persistIndependentAuthorization(stub, s, r, result); err != nil {
+			return err
 		}
-	case "data.register", "data.update":
-		d.Data = s.Data[result.ObjectID]
-		if e := put(stub, dataKind, d, result.ObjectID); e != nil {
-			return e
-		}
-	case "authorization.request":
-		a := s.Authorizations[result.ObjectID]
-		if e := put(stub, pendingKind, a, a.DataID, a.OwnerID, a.Recipient); e != nil {
-			return e
-		}
-	case "authorization.update":
-		if e := persistAuthorizationUpdate(stub, s, r, d, result); e != nil {
-			return e
-		}
-	case "authorization.decide":
-		a := s.Authorizations[result.ObjectID]
-		d.Authorizations[result.ObjectID] = a
-		if e := put(stub, dataKind, d, a.DataID); e != nil {
-			return e
-		}
-		if e := remove(stub, pendingKind, a.DataID, a.OwnerID, a.Recipient); e != nil {
-			return e
+	} else {
+		switch r.Operation {
+		case "identity.register":
+			if e := put(stub, identityKind, s.Identities[result.ObjectID], result.ObjectID); e != nil {
+				return e
+			}
+		case "data.register", "data.update":
+			d.Data = s.Data[result.ObjectID]
+			if e := put(stub, dataKind, d, result.ObjectID); e != nil {
+				return e
+			}
+		case "authorization.request":
+			a := s.Authorizations[result.ObjectID]
+			if e := put(stub, pendingKind, a, a.DataID, a.OwnerID, a.Recipient); e != nil {
+				return e
+			}
+		case "authorization.update":
+			if e := persistAuthorizationUpdate(stub, s, r, d, result); e != nil {
+				return e
+			}
+		case "authorization.decide":
+			a := s.Authorizations[result.ObjectID]
+			d.Authorizations[result.ObjectID] = a
+			if e := put(stub, dataKind, d, a.DataID); e != nil {
+				return e
+			}
+			if e := remove(stub, pendingKind, a.DataID, a.OwnerID, a.Recipient); e != nil {
+				return e
+			}
 		}
 	}
 	if e := persistSourceIndexes(stub, s, r, before, result); e != nil {
@@ -262,14 +298,11 @@ func persist(stub shim.ChaincodeStubInterface, s domain.State, r domain.Request,
 	if e := put(stub, receiptKind, s.Receipts[r.Actor+"|"+r.RequestID], r.Actor, r.RequestID); e != nil {
 		return e
 	}
-	m, e := getMetadata(stub)
-	if e != nil {
-		return e
-	}
 	if m.ReceiptSequence {
 		return nil
 	}
-	return putMetadata(stub, metadata{Domain: s.Domain, Sequence: s.Sequence})
+	m.Sequence = s.Sequence
+	return putMetadata(stub, m)
 }
 
 // migrate preserves existing identifiers and receipts while replacing the v1 document.
