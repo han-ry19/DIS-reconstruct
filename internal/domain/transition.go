@@ -141,7 +141,7 @@ func Apply(s *State, r Request, now int64) (Result, error) {
 			return fail(err)
 		}
 	case "authorization.update":
-		object, err = updateAuthorization(s, r)
+		object, err = updateAuthorization(s, r, now)
 		if err != nil {
 			return fail(err)
 		}
@@ -181,8 +181,8 @@ func Apply(s *State, r Request, now int64) (Result, error) {
 		if data.OwnerID != r.Actor {
 			return fail(ErrUnauthorized)
 		}
-		object = AuthorizationKey(p.DataID, r.Actor, p.Recipient)
-		a, ok := s.Authorizations[object]
+		var a AuthorizationRecord
+		object, a, ok = FindAuthorization(*s, p.DataID, p.Recipient)
 		if !ok {
 			return fail(ErrNotFound)
 		}

@@ -2,7 +2,7 @@
 const crypto = require('node:crypto');
 
 // DIS-request-v1: Go struct field order, omitempty, and encoding/json escaping.
-const parameterFields = ['field', 'new_content', 'authorization_owner', 'identity_id',
+const parameterFields = ['field', 'new_content', 'identity_id',
     'public_key', 'kind', 'data_id', 'address', 'data_signature', 'profile',
     'recipient', 'permissions', 'expires_at', 'status'];
 function signingBytes(request) {

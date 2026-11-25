@@ -49,8 +49,7 @@ func updateData(s *State, r Request) (string, error) {
 
 // updateAuthorization follows Algorithm 8. The current data owner may edit an
 // existing authorization; changing recipient moves it rather than copying a grant.
-// authorization_owner identifies a historical issuer after an RP ownership update.
-func updateAuthorization(s *State, r Request) (string, error) {
+func updateAuthorization(s *State, r Request, now int64) (string, error) {
 	p := r.Parameters
 	d, ok := s.Data[p.DataID]
 	if !ok {
@@ -59,12 +58,7 @@ func updateAuthorization(s *State, r Request) (string, error) {
 	if d.OwnerID != r.Actor {
 		return "", ErrUnauthorized
 	}
-	owner := p.AuthorizationOwner
-	if owner == "" {
-		owner = d.OwnerID
-	}
-	oldKey := AuthorizationKey(d.ID, owner, p.Recipient)
-	a, ok := s.Authorizations[oldKey]
+	oldKey, a, ok := FindAuthorization(*s, d.ID, p.Recipient)
 	if !ok {
 		return "", ErrNotFound
 	}
@@ -73,6 +67,9 @@ func updateAuthorization(s *State, r Request) (string, error) {
 		status := AuthorizationStatus(p.NewContent)
 		if status != AuthorizationApproved && status != AuthorizationRejected {
 			return "", ErrInvalid
+		}
+		if a.Status == AuthorizationPending {
+			a.IssuedAt = now
 		}
 		a.Status = status
 	case "permissions":
@@ -123,4 +120,14 @@ func validPermissions(values []string) bool {
 		seen[v] = true
 	}
 	return true
+}
+
+// FindAuthorization selects the unique public authorization name, independent of issuer.
+func FindAuthorization(s State, data, recipient string) (string, AuthorizationRecord, bool) {
+	for k, a := range s.Authorizations {
+		if a.DataID == data && a.Recipient == recipient {
+			return k, a, true
+		}
+	}
+	return "", AuthorizationRecord{}, false
 }

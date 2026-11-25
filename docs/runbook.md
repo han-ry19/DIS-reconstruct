@@ -90,7 +90,13 @@ The output is a lowercase UUIDv4 followed by .data. Put this value in parameters
 
 An authorization.request creates the first record for a data identifier and recipient. Any existing record causes HTTP 409, including pending, rejected, expired, and prior-owner records. The current data owner uses authorization.update to change permissions, status, or expiration. Exact retries of a committed request return the original result without changing the current authorization. Ownership transfer retains existing authorizations and gives their management to the new owner.
 
-The publisher uses committed events for incremental DNS updates, with a full snapshot for initialization and recovery.
+The publisher uses committed events for incremental DNS updates. Cold rebuilding streams valid events to a captured block boundary and retains current business objects only. Managed restarts reuse the persistent projection, and reconnection resumes from its block/transaction checkpoint. The launcher uses dis-sync -bootstrap; dis-sync -once explicitly reconstructs and republishes from committed history. Cold rebuilding requires channel history from genesis; its duration grows with that history.
+
+HTTP errors include error, code, and retryable. Both business conflicts and Fabric validation conflicts return 409. Business conflicts use code=conflict and retryable=false. MVCC and phantom-read conflicts use code=ledger_conflict and retryable=true, with Retry-After: 1. Resubmit the signed request after the delay; Fabric evaluates it against the current state. An exact retry of a committed request returns its original result.
+
+Set services.ns_address to the IPv4 address advertised by the authoritative nameserver. The default is 127.0.0.1. This selects the A glue record for ns.uid and ns.data; service listener addresses are configured separately.
+
+This release requires a fresh runtime for ledger schema 4. Keep earlier runtime directories intact and choose a new runtime path in the configuration.
 
 ## Stop and restart
 

@@ -13,13 +13,13 @@ import (
 	"time"
 )
 
-func verifyState(s domain.State, address string) error {
+func verifyState(s domain.State, address string, nsAddress ...string) error {
 	if address == "" {
 		return nil
 	}
 	deadline := time.Now().Add(60 * time.Second)
 	for {
-		e := dns.Verify(s, address)
+		e := dns.Verify(s, address, nsAddress...)
 		if e == nil {
 			return nil
 		}
@@ -30,12 +30,14 @@ func verifyState(s domain.State, address string) error {
 	}
 }
 func main() {
+	nsAddress := flag.String("ns-address", "127.0.0.1", "Advertised authoritative nameserver IPv4 address")
 	profile := flag.String("fabric-config", "", "Fabric gateway configuration")
 	statePath := flag.String("state", "runtime/state.json", "Development state file")
 	output := flag.String("out", "runtime/dns", "Zone-file export directory")
 	address := flag.String("redis", "", "Redis address for event-driven publication")
 	interval := flag.Duration("interval", time.Second, "Development polling or event reconnect interval")
-	once := flag.Bool("once", false, "Publish one full snapshot and exit")
+	bootstrap := flag.Bool("bootstrap", false, "Reuse a persistent projection or rebuild it when absent")
+	once := flag.Bool("once", false, "Recover and publish committed state once, then exit")
 	verify := flag.String("verify", "", "Authoritative DNS address for complete AXFR verification")
 	check := flag.Bool("check", false, "Verify Redis and authoritative DNS against Fabric without publishing")
 	flag.Parse()
@@ -51,7 +53,7 @@ func main() {
 			log.Fatal(e)
 		}
 		defer b.Close()
-		view = b.View
+		view = func() (domain.State, error) { s, _, err := b.Rebuild(context.Background()); return s, err }
 	} else {
 		view = func() (domain.State, error) {
 			raw, e := os.ReadFile(*statePath)
@@ -64,31 +66,30 @@ func main() {
 		}
 	}
 	full := func() error {
-		s, e := view()
+		var s domain.State
+		var height uint64
+		var e error
+		if b != nil {
+			s, height, e = b.Rebuild(context.Background())
+		} else {
+			s, e = view()
+		}
 		if e != nil {
 			return e
 		}
 		if *address != "" {
-			old, ok, e := dns.LoadProjection(*address)
-			if e != nil {
-				return e
-			}
-			p := dns.ProjectionCheckpoint{State: s}
-			if ok {
-				p.Block = old.Block
-				p.Transaction = old.Transaction
-			}
-			if e = dns.SaveProjection(*address, p, true); e != nil {
+			p := dns.ProjectionCheckpoint{State: s, Block: height}
+			if e = dns.SaveProjection(*address, p, true, *nsAddress); e != nil {
 				return e
 			}
 		}
-		if e = dns.Publish(s, *output); e != nil {
+		if e = dns.Publish(s, *output, *nsAddress); e != nil {
 			return e
 		}
-		if e = verifyState(s, *verify); e != nil {
+		if e = verifyState(s, *verify, *nsAddress); e != nil {
 			return e
 		}
-		log.Printf("published full snapshot sequence %d", s.Sequence)
+		log.Printf("published recovered state sequence %d next block %d", s.Sequence, height)
 		return nil
 	}
 
@@ -112,13 +113,35 @@ func main() {
 		if expected != actual {
 			log.Fatal("Redis projection does not match committed state")
 		}
-		if e = verifyState(s, *verify); e != nil {
+		if e = verifyState(s, *verify, *nsAddress); e != nil {
 			log.Fatal(e)
 		}
 		log.Printf("verified event projection sequence %d", s.Sequence)
 		return
 	}
-	if *once {
+	if *bootstrap {
+		if b == nil || *address == "" {
+			log.Fatal("bootstrap requires -fabric-config and -redis")
+		}
+		p, ok, e := dns.LoadProjection(*address)
+		if e != nil {
+			log.Fatal(e)
+		}
+		if ok {
+			if e = dns.SaveProjection(*address, p, true, *nsAddress); e != nil {
+				log.Fatal(e)
+			}
+			if e = dns.Publish(p.State, *output, *nsAddress); e != nil {
+				log.Fatal(e)
+			}
+			if e = verifyState(p.State, *verify, *nsAddress); e != nil {
+				log.Fatal(e)
+			}
+			log.Printf("reused projection sequence %d checkpoint block %d", p.State.Sequence, p.Block)
+			return
+		}
+	}
+	if *once || *bootstrap {
 		if e := full(); e != nil {
 			log.Fatal(e)
 		}
@@ -133,91 +156,59 @@ func main() {
 		}
 	}
 	for {
-		if e := follow(b, view, *address, *output, *verify); e != nil {
+		if e := follow(b, *address, *output, *verify, *nsAddress); e != nil {
 			log.Printf("event synchronization: %v", e)
 		}
 		time.Sleep(*interval)
 	}
 }
-func follow(b *fabric.Backend, view func() (domain.State, error), address, output, verify string) error {
+func follow(b *fabric.Backend, address, output, verify, nsAddress string) error {
 	p, ok, e := dns.LoadProjection(address)
 	if e != nil {
 		return e
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	if !ok {
-		s, e := view()
+		p.State, p.Block, e = b.Rebuild(ctx)
 		if e != nil {
 			return e
 		}
-		p.State = s
-		if e = dns.SaveProjection(address, p, true); e != nil {
+		if e = dns.SaveProjection(address, p, true, nsAddress); e != nil {
 			return e
 		}
-		if e = dns.Publish(s, output); e != nil {
+		if e = dns.Publish(p.State, output, nsAddress); e != nil {
 			return e
 		}
-		log.Printf("bootstrapped event projection sequence %d", s.Sequence)
+		log.Printf("recovered projection sequence %d next block %d", p.State.Sequence, p.Block)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	events, e := b.Events(ctx, p)
 	if e != nil {
 		return e
 	}
-	log.Printf("following committed events from block %d after %s", p.Block, p.Transaction)
+	log.Printf("following events from block %d after %s", p.Block, p.Transaction)
 	for event := range events {
-		p.Change = nil
-		fullUpdate := event.EventName == domain.FullUpdateEvent
-		switch event.EventName {
-		case domain.ZoneUpdateEvent:
-			var change domain.Change
-			if e = json.Unmarshal(event.Payload, &change); e != nil {
-				return e
-			}
-			if change.RequestKey != "" && p.State.AppliedRequests[change.RequestKey] {
-				// A bootstrap snapshot already contains this committed transition.
-				continue
-			}
-			if (change.RequestKey != "" && !p.State.AppliedRequests[change.RequestKey]) || (change.RequestKey == "" && change.Sequence > p.State.Sequence) {
-				p.Change = &change
-				if e = dns.ApplyChange(&p.State, change); e != nil {
-					// Recover missed updates from one committed snapshot, then resume the stream.
-					s, readErr := view()
-					if readErr != nil {
-						return readErr
-					}
-					if !snapshotCoversChange(s, change) {
-						return fmt.Errorf("snapshot behind event")
-					}
-					p.State = s
-					fullUpdate = true
-					p.Change = nil
-				}
-			}
-		case domain.FullUpdateEvent:
-			p.State, e = view()
-			if e != nil {
-				return e
-			}
-		default:
-			continue
+		if event.EventName != domain.ZoneUpdateEvent {
+			return fmt.Errorf("unsupported DIS event %s", event.EventName)
 		}
-		p.Block = event.BlockNumber
-		p.Transaction = event.TransactionID
-		if e = dns.SaveProjection(address, p, fullUpdate); e != nil {
+		var change domain.Change
+		if e = json.Unmarshal(event.Payload, &change); e != nil {
 			return e
 		}
-		if e = verifyState(p.State, verify); e != nil {
+		change.Sequence = p.State.Sequence + 1
+		if e = dns.ApplyChange(&p.State, change); e != nil {
+			return e
+		}
+		p.Change = &change
+		p.Block = event.BlockNumber
+		p.Transaction = event.TransactionID
+		if e = dns.SaveProjection(address, p, false, nsAddress); e != nil {
+			return e
+		}
+		if e = verifyState(p.State, verify, nsAddress); e != nil {
 			return e
 		}
 		log.Printf("published event sequence %d block %d transaction %s", p.State.Sequence, p.Block, p.Transaction)
 	}
 	return fmt.Errorf("event stream closed")
-}
-
-func snapshotCoversChange(s domain.State, change domain.Change) bool {
-	if change.RequestKey != "" {
-		return s.AppliedRequests[change.RequestKey]
-	}
-	return s.Sequence >= change.Sequence
 }

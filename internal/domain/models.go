@@ -40,20 +40,19 @@ type AuthorizationRecord struct {
 
 // Parameters are typed and serialized in a fixed order for request signing.
 type Parameters struct {
-	Field              string              `json:"field,omitempty"`
-	NewContent         string              `json:"new_content,omitempty"`
-	AuthorizationOwner string              `json:"authorization_owner,omitempty"`
-	IdentityID         string              `json:"identity_id,omitempty"`
-	PublicKey          string              `json:"public_key,omitempty"`
-	Kind               string              `json:"kind,omitempty"`
-	DataID             string              `json:"data_id,omitempty"`
-	Address            string              `json:"address,omitempty"`
-	DataSignature      string              `json:"data_signature,omitempty"`
-	Profile            *DataProfile        `json:"profile,omitempty"`
-	Recipient          string              `json:"recipient,omitempty"`
-	Permissions        []string            `json:"permissions,omitempty"`
-	ExpiresAt          int64               `json:"expires_at,omitempty"`
-	Status             AuthorizationStatus `json:"status,omitempty"`
+	Field         string              `json:"field,omitempty"`
+	NewContent    string              `json:"new_content,omitempty"`
+	IdentityID    string              `json:"identity_id,omitempty"`
+	PublicKey     string              `json:"public_key,omitempty"`
+	Kind          string              `json:"kind,omitempty"`
+	DataID        string              `json:"data_id,omitempty"`
+	Address       string              `json:"address,omitempty"`
+	DataSignature string              `json:"data_signature,omitempty"`
+	Profile       *DataProfile        `json:"profile,omitempty"`
+	Recipient     string              `json:"recipient,omitempty"`
+	Permissions   []string            `json:"permissions,omitempty"`
+	ExpiresAt     int64               `json:"expires_at,omitempty"`
+	Status        AuthorizationStatus `json:"status,omitempty"`
 }
 type Request struct {
 	Domain     string     `json:"domain"`
@@ -78,14 +77,12 @@ type Receipt struct {
 	Result Result `json:"result"`
 }
 type State struct {
-	ReceiptSequence bool                           `json:"receipt_sequence,omitempty"`
-	AppliedRequests map[string]bool                `json:"applied_requests,omitempty"`
-	Domain          string                         `json:"domain"`
-	Sequence        uint64                         `json:"sequence"`
-	Identities      map[string]Identity            `json:"identities"`
-	Data            map[string]DataIdentifier      `json:"data"`
-	Authorizations  map[string]AuthorizationRecord `json:"authorizations"`
-	Receipts        map[string]Receipt             `json:"receipts"`
+	Domain         string                         `json:"domain"`
+	Sequence       uint64                         `json:"sequence"`
+	Identities     map[string]Identity            `json:"identities"`
+	Data           map[string]DataIdentifier      `json:"data"`
+	Authorizations map[string]AuthorizationRecord `json:"authorizations"`
+	Receipts       map[string]Receipt             `json:"receipts"`
 }
 
 func NewState(domain string) State {

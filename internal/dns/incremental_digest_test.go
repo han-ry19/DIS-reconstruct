@@ -22,14 +22,12 @@ func TestLiveIncrementalCheckpointAndSameSequenceConflict(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := fixture()
-	s.ReceiptSequence = true
-	s.AppliedRequests = map[string]bool{}
 	p := ProjectionCheckpoint{State: s, Block: 1, Transaction: "initial"}
 	if err = SaveProjection(address, p, true); err != nil {
 		t.Fatal(err)
 	}
 	id := domain.Identity{ID: "new.uid", Kind: "user", PublicKey: s.Identities["alice.uid"].PublicKey}
-	c := domain.Change{Domain: s.Domain, Operation: "identity.register", RequestKey: "new.uid|register", Identity: &id}
+	c := domain.Change{Domain: s.Domain, Sequence: p.State.Sequence + 1, Operation: "identity.register", RequestKey: "new.uid|register", Identity: &id}
 	if err = ApplyChange(&p.State, c); err != nil {
 		t.Fatal(err)
 	}

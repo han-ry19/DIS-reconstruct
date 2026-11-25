@@ -11,7 +11,6 @@ Use ./run.sh with [config.yaml](../config.yaml) for routine startup, status, and
 | services.py | Manage Redis, publisher, CoreDNS, and API |
 | topology.py | Validate organizations, nodes, endorsement, ports, and placement |
 | transport.py / node-agent.py | Deploy and manage remote node processes over SSH |
-| upgrade-ledger.py | Migrate the earlier ledger layout |
 | acceptance.py | Verify business workflow, peers, Gateways, DNS, and restart |
 | acceptance-events.py | Verify publisher recovery after offline commits |
 | benchmark-caliper.py | Run the signed-registration Caliper workload |

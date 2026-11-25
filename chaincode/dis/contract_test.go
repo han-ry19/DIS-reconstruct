@@ -56,7 +56,7 @@ func TestFabricAdapter(t *testing.T) {
 	r = stub.MockInvoke("snapshot", [][]byte{[]byte("GetSnapshot")})
 	var state domain.State
 	json.Unmarshal(r.Payload, &state)
-	if state.Sequence != 1 {
+	if state.Sequence != 0 || len(state.Identities) != 1 || len(state.Receipts) != 0 {
 		t.Fatal("failed invoke changed ledger")
 	}
 	if r = stub.MockInit("again", [][]byte{[]byte("Init"), []byte("other")}); r.Status == 200 {

@@ -46,8 +46,8 @@ func atomic(path string, b []byte) error {
 	defer dir.Close()
 	return dir.Sync()
 }
-func Publish(s domain.State, directory string) error {
-	zones, e := Project(s)
+func Publish(s domain.State, directory string, nsAddress ...string) error {
+	zones, e := Project(s, nsAddress...)
 	if e != nil {
 		return e
 	}
@@ -96,8 +96,8 @@ func Publish(s domain.State, directory string) error {
 }
 
 // Verify checks the complete authoritative zone contents by TCP AXFR.
-func Verify(s domain.State, address string) error {
-	expected, e := Project(s)
+func Verify(s domain.State, address string, nsAddress ...string) error {
+	expected, e := Project(s, nsAddress...)
 	if e != nil {
 		return e
 	}

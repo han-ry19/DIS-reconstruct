@@ -22,7 +22,7 @@ def main():
         return subprocess.run([str(v) for v in values], check=True, capture_output=True, text=True).stdout
 
     transcript = RUNTIME / 'replay-requests.json'
-    demo = command([ROOT / 'bin/dis-demo', '-url', api, '-transcript', transcript])
+    demo = command([ROOT / 'bin/dis-demo', '-url', api, '-transcript', transcript, '-domain', network['topology']['domain']])
     record = json.loads(demo.splitlines()[-1])
     print(demo)
 
@@ -44,7 +44,7 @@ def main():
         deadline = time.monotonic() + 30
         while True:
             try:
-                command([ROOT / 'bin/dis-sync', '-fabric-config', WORK / 'gateway.json', '-redis', f'127.0.0.1:{services["redis_port"]}', '-check', '-verify', dns])
+                command([ROOT / 'bin/dis-sync', '-fabric-config', WORK / 'gateway.json', '-redis', f'127.0.0.1:{services["redis_port"]}', '-check', '-verify', dns, '-ns-address', services.get('ns_address','127.0.0.1')])
                 break
             except subprocess.CalledProcessError:
                 if time.monotonic() > deadline:

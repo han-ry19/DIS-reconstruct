@@ -82,8 +82,8 @@ func TestManagementUpdatesThroughHTTPAndRecovery(t *testing.T) {
 	submit("authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Field: "permissions", NewContent: "[\"Read\",\"Update\"]"}, 200)
 	submit("authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Field: "recipient", NewContent: "other.uid"}, 200)
 	submit("data.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Field: "RP", NewContent: "bob.uid"}, 200)
-	submit("authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "other.uid", AuthorizationOwner: "alice.uid", Field: "status", NewContent: "rejected"}, 403)
-	last := submit("authorization.update", "bob.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "other.uid", AuthorizationOwner: "alice.uid", Field: "status", NewContent: "rejected"}, 200)
+	submit("authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "other.uid", Field: "status", NewContent: "rejected"}, 403)
+	last := submit("authorization.update", "bob.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "other.uid", Field: "status", NewContent: "rejected"}, 200)
 	oldRoute := "/v1/authorizations?data_id=e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data&owner_id=alice.uid&recipient=app.uid"
 	route := "/v1/authorizations?data_id=e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data&owner_id=alice.uid&recipient=other.uid"
 	get(oldRoute, 404, nil)

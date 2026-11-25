@@ -138,7 +138,7 @@ func persistSourceIndexes(stub shim.ChaincodeStubInterface, s domain.State, r do
 	return nil
 }
 
-func indexedData(stub shim.ChaincodeStubInterface, m metadata, actor, kind string) ([]domain.DataIdentifier, error) {
+func indexedData(stub shim.ChaincodeStubInterface, actor, kind string) ([]domain.DataIdentifier, error) {
 	var identity domain.Identity
 	exists, err := read(stub, identityKind, &identity, actor)
 	if err != nil {
@@ -151,10 +151,8 @@ func indexedData(stub shim.ChaincodeStubInterface, m metadata, actor, kind strin
 	if err != nil {
 		return nil, err
 	}
-	// Fresh ledgers maintain complete associations from initialization.
-	// Earlier ledgers retain snapshot queries to include unindexed objects.
-	if !m.IndexedQueries || actorIndex == "" {
-		return legacyIndexedData(stub, m, actor, kind)
+	if actorIndex == "" {
+		return []domain.DataIdentifier{}, nil
 	}
 	ts, err := stub.GetTxTimestamp()
 	if err != nil {
@@ -187,34 +185,14 @@ func indexedData(stub shim.ChaincodeStubInterface, m metadata, actor, kind strin
 		if !exists {
 			continue
 		}
-		if m.IndependentAuthorizations && kind == authorizedIndexKind {
-			var a domain.AuthorizationRecord
-			if ok, err := read(stub, authorizationKind, &a, id, actor); err != nil {
-				return nil, err
-			} else if ok {
-				d.Authorizations[domain.AuthorizationKey(a.DataID, a.OwnerID, a.Recipient)] = a
-			}
-		}
 		allowed := d.Data.OwnerID == actor
 		if !allowed && kind == authorizedIndexKind {
-			for _, a := range d.Authorizations {
-				if a.Recipient != actor || a.Status != domain.AuthorizationApproved || a.ExpiresAt <= ts.Seconds {
-					continue
-				}
-				var pending domain.AuthorizationRecord
-				overlaid := false
-				var err error
-				if !m.IndependentAuthorizations {
-					overlaid, err = read(stub, pendingKind, &pending, a.DataID, a.OwnerID, a.Recipient)
-				}
-				if err != nil {
-					return nil, err
-				}
-				if !overlaid {
-					allowed = true
-					break
-				}
+			var a domain.AuthorizationRecord
+			ok, err := read(stub, authorizationKind, &a, id, actor)
+			if err != nil {
+				return nil, err
 			}
+			allowed = ok && a.Status == domain.AuthorizationApproved && a.ExpiresAt > ts.Seconds
 		}
 		if allowed {
 			out = append(out, d.Data)
@@ -224,47 +202,8 @@ func indexedData(stub shim.ChaincodeStubInterface, m metadata, actor, kind strin
 	return out, nil
 }
 
-func legacyIndexedData(stub shim.ChaincodeStubInterface, m metadata, actor, kind string) ([]domain.DataIdentifier, error) {
-	// A snapshot fallback keeps pre-index ledgers readable; all returned associations
-	// are checked against business records (including revocation and expiration).
-	s, e := snapshot(stub, m)
-	if e != nil {
-		return nil, e
-	}
-	if _, ok := s.Identities[actor]; !ok {
-		return nil, domain.ErrNotFound
-	}
-	ts, e := stub.GetTxTimestamp()
-	if e != nil {
-		return nil, e
-	}
-	ids := map[string]bool{}
-	for id, d := range s.Data {
-		if d.OwnerID == actor {
-			ids[id] = true
-		}
-	}
-	if kind == authorizedIndexKind {
-		for _, a := range s.Authorizations {
-			if a.Recipient == actor && a.Status == domain.AuthorizationApproved && a.ExpiresAt > ts.Seconds {
-				ids[a.DataID] = true
-			}
-		}
-	}
-	out := []domain.DataIdentifier{}
-	for id := range ids {
-		d, ok := s.Data[id]
-		if !ok {
-			return nil, fmt.Errorf("index references missing data")
-		}
-		out = append(out, d)
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
-	return out, nil
-}
-
 // indexQuery keeps byte mappings distinct from JSON business records.
-func indexQuery(stub shim.ChaincodeStubInterface, m metadata, function string, args []string) ([]byte, error) {
+func indexQuery(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	if len(args) != 1 {
 		return nil, fmt.Errorf("%s requires one identifier", function)
 	}
@@ -305,7 +244,7 @@ func indexQuery(stub shim.ChaincodeStubInterface, m metadata, function string, a
 		if function == "GetAuthorizedData" {
 			kind = authorizedIndexKind
 		}
-		v, e := indexedData(stub, m, args[0], kind)
+		v, e := indexedData(stub, args[0], kind)
 		if e != nil {
 			return nil, e
 		}

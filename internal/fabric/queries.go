@@ -42,3 +42,14 @@ func (b *Backend) GetAuthorization(data, owner, recipient string) (domain.Author
 	e = json.Unmarshal(raw, &v)
 	return v, e
 }
+
+// Domain reads deployment metadata without loading the business-state snapshot.
+func (b *Backend) Domain() (string, error) {
+	raw, err := b.contract.EvaluateTransaction("GetDomain")
+	if err != nil {
+		return "", err
+	}
+	var name string
+	err = json.Unmarshal(raw, &name)
+	return name, err
+}

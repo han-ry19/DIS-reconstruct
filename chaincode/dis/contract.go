@@ -16,7 +16,7 @@ func (c *Contract) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	if len(args) != 1 || args[0] == "" {
 		return shim.Error("Init requires a domain")
 	}
-	for _, key := range []string{metadataKey, legacyKey} {
+	for _, key := range []string{metadataKey, "dis.metadata.v2", "dis.state.v1"} {
 		b, e := stub.GetState(key)
 		if e != nil {
 			return shim.Error(e.Error())
@@ -25,34 +25,19 @@ func (c *Contract) Init(stub shim.ChaincodeStubInterface) pb.Response {
 			return shim.Error("already initialized")
 		}
 	}
-	if e := putMetadata(stub, metadata{Domain: args[0], ReceiptSequence: true, IndexedQueries: true, IndependentAuthorizations: true}); e != nil {
+	if e := putMetadata(stub, metadata{Domain: args[0]}); e != nil {
 		return shim.Error(e.Error())
 	}
 	return shim.Success(nil)
 }
 func (c *Contract) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	function, args := stub.GetFunctionAndParameters()
-	if function == "MigrateState" {
-		if len(args) != 0 {
-			return shim.Error("MigrateState takes no arguments")
-		}
-		if e := migrate(stub); e != nil {
-			return shim.Error(e.Error())
-		}
-		if e := migrateAuthorizations(stub); e != nil {
-			return shim.Error(e.Error())
-		}
-		return shim.Success(nil)
-	}
 	m, e := getMetadata(stub)
 	if e != nil {
 		return shim.Error(e.Error())
 	}
 	switch function {
 	case "Submit":
-		if !m.IndependentAuthorizations {
-			return shim.Error("run MigrateState before submitting to this ledger version")
-		}
 		if len(args) != 1 {
 			return shim.Error("Submit requires signed request JSON")
 		}
@@ -77,23 +62,17 @@ func (c *Contract) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		if e != nil {
 			return shim.Error(e.Error())
 		}
-		if s.Sequence != m.Sequence {
-			if m.ReceiptSequence {
-				result.Sequence = 0
-				result.TransactionID = stub.GetTxID()
-				receipt := s.Receipts[request.Actor+"|"+request.RequestID]
-				receipt.Result = result
-				receipt.Actor = request.Actor
-				s.Receipts[request.Actor+"|"+request.RequestID] = receipt
-			}
+		if s.Sequence != 0 {
+			result.Sequence = 0
+			result.TransactionID = stub.GetTxID()
+			receipt := s.Receipts[request.Actor+"|"+request.RequestID]
+			receipt.Result = result
+			receipt.Actor = request.Actor
+			s.Receipts[request.Actor+"|"+request.RequestID] = receipt
 			if e = persist(stub, s, request, d, result); e != nil {
 				return shim.Error(e.Error())
 			}
-			change := domain.Change{Domain: s.Domain, Sequence: s.Sequence, Operation: request.Operation}
-			if m.ReceiptSequence {
-				change.Sequence = 0
-				change.RequestKey = request.Actor + "|" + request.RequestID
-			}
+			change := domain.Change{Domain: s.Domain, Operation: request.Operation, RequestKey: request.Actor + "|" + request.RequestID}
 			switch request.Operation {
 			case "identity.register":
 				v := s.Identities[result.ObjectID]
@@ -120,11 +99,16 @@ func (c *Contract) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		}
 		return success(result)
 	case "GetOwnedData", "GetAuthorizedData", "TransDOIToIndex", "TransIndexToDOI", "GetTransactionInfo":
-		b, err := indexQuery(stub, m, function, args)
+		b, err := indexQuery(stub, function, args)
 		if err != nil {
 			return shim.Error(err.Error())
 		}
 		return shim.Success(b)
+	case "GetDomain":
+		if len(args) != 0 {
+			return shim.Error("GetDomain takes no arguments")
+		}
+		return success(m.Domain)
 	case "GetSnapshot":
 		if len(args) != 0 {
 			return shim.Error("GetSnapshot takes no arguments")
@@ -163,31 +147,12 @@ func (c *Contract) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		if len(args) != 3 {
 			return shim.Error("GetAuthorization requires data, owner, recipient")
 		}
-		if m.IndependentAuthorizations {
-			var a domain.AuthorizationRecord
-			ok, err := read(stub, authorizationKind, &a, args[0], args[2])
-			if err != nil {
-				return shim.Error(err.Error())
-			}
-			if !ok || a.OwnerID != args[1] {
-				return shim.Error("not found")
-			}
-			return success(a)
-		}
 		var a domain.AuthorizationRecord
-		ok, e := read(stub, pendingKind, &a, args...)
-		if e != nil {
-			return shim.Error(e.Error())
+		ok, err := read(stub, authorizationKind, &a, args[0], args[2])
+		if err != nil {
+			return shim.Error(err.Error())
 		}
-		if ok {
-			return success(a)
-		}
-		d, _, e := object(stub, args[0])
-		if e != nil {
-			return shim.Error(e.Error())
-		}
-		a, ok = d.Authorizations[domain.AuthorizationKey(args[0], args[1], args[2])]
-		if !ok {
+		if !ok || a.OwnerID != args[1] {
 			return shim.Error("not found")
 		}
 		return success(a)

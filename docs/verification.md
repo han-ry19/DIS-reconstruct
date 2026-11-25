@@ -56,3 +56,9 @@ DIS_TEST_REDIS_ADDRESS=127.0.0.1:16379 go test -race -p 1 ./...
 | Deployment | Requested topology and ports appear in status; managed processes start and stop correctly |
 
 Use the same checks for each topology selected in [deployment](experiment-deployment.md). Throughput and latency are measured separately with the [Caliper workload](../benchmarks/caliper/README.md).
+
+## Ownership transfer and event recovery
+
+The regression suite checks that a new owner can decide a pre-transfer pending request, the former owner is rejected, and the decision sets issued_at. It also checks first-time status updates of pending requests. The live Fabric regression is TestLiveFabricPendingTransferAndColdRecovery in internal/fabric/transfer_integration_test.go. Its cold replay is compared with the current ledger objects, including a history containing invalidated transactions.
+
+GetSnapshot is tested with additional malformed receipt entries to ensure it neither reads nor returns request history. Recovery parsing tests distinguish valid DIS events, invalid transactions, and other chaincodes. Redis integration tests verify atomic records/checkpoint persistence, recovery, recipient moves, and rejection of conflicting or older publications. Configuration tests cover advertised nameserver addresses, while HTTP tests distinguish business conflict and retryable ledger-conflict responses.

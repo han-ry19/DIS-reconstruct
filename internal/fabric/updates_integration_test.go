@@ -28,7 +28,7 @@ func TestLiveFabricManagementUpdates(t *testing.T) {
 		t.Fatal(e)
 	}
 	defer backend.Close()
-	initial, e := backend.View()
+	initial, e := replayedView(backend)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -155,7 +155,7 @@ func TestLiveFabricManagementUpdates(t *testing.T) {
 		v, ok := rrs[0].(*mdns.RP)
 		return ok && v.Mbox == mdns.Fqdn(nextID)
 	})
-	p := domain.Parameters{DataID: dataID, AuthorizationOwner: ownerID, Recipient: otherID, Field: "status", NewContent: "rejected"}
+	p := domain.Parameters{DataID: dataID, Recipient: otherID, Field: "status", NewContent: "rejected"}
 	denied := domain.Request{Domain: initial.Domain, Operation: "authorization.update", Actor: ownerID, RequestID: "denied-" + suffix, Timestamp: time.Now().Unix(), Parameters: p}
 	domain.Sign(&denied, keys[ownerID])
 	if _, e = backend.Submit(denied); !errors.Is(e, domain.ErrUnauthorized) {
@@ -176,7 +176,7 @@ func TestLiveFabricManagementUpdates(t *testing.T) {
 	if e != nil || retry != result {
 		t.Fatal("reconnect retry changed result", retry, e)
 	}
-	final, e := backend.View()
+	final, e := replayedView(backend)
 	if e != nil {
 		t.Fatal(e)
 	}

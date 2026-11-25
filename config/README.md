@@ -29,6 +29,7 @@ With no arguments, run.sh starts the deployment. Plan validates and prints setti
 | services.api_port | HTTP API port |
 | services.dns_port | Authoritative DNS UDP/TCP port |
 | services.redis_port | Redis port |
+| services.ns_address | Advertised nameserver IPv4 glue address; defaults to 127.0.0.1 |
 
 Defaults are four organizations, one peer each, four orderers, endorsement threshold three, and Gateway concurrency 500. Fabric ports start at 37000. API, DNS, and Redis use loopback ports 38080, 38530, and 38679. Data is stored under runtime/configured. Channel and chaincode names are dis. Bootstrap pins tool versions; request encoding, DNS TTL, and application timeouts are code settings.
 

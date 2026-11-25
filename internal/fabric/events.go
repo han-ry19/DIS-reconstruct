@@ -8,9 +8,3 @@ import (
 func (b *Backend) Events(ctx context.Context, checkpoint client.Checkpoint) (<-chan *client.ChaincodeEvent, error) {
 	return b.network.ChaincodeEvents(ctx, b.chaincode, client.WithStartBlock(0), client.WithCheckpoint(checkpoint))
 }
-
-// MigrateState submits the deterministic ledger conversion to independent authorizations.
-func (b *Backend) MigrateState() error {
-	_, e := b.contract.SubmitTransaction("MigrateState")
-	return e
-}

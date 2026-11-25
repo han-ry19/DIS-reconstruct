@@ -2,7 +2,7 @@
 """Verify event catch-up while the publisher is offline, without a full refresh."""
 import fcntl,json,os,signal,subprocess,time
 from pathlib import Path
-from network import ROOT,WORK,RUNTIME,stamp,live
+from network import ROOT,WORK,RUNTIME,stamp,live,load
 
 def main():
  servicesdir=RUNTIME/'services'
@@ -15,10 +15,10 @@ def main():
   while live(old):
    if time.monotonic()>deadline:raise RuntimeError('Publisher did not stop')
    time.sleep(.1)
-  args=[ROOT/'bin/dis-sync','-fabric-config',WORK/'gateway.json','-redis',f'127.0.0.1:{m["redis_port"]}','-out',RUNTIME/'dns']
+  args=[ROOT/'bin/dis-sync','-fabric-config',WORK/'gateway.json','-redis',f'127.0.0.1:{m["redis_port"]}','-out',RUNTIME/'dns','-ns-address',m.get('ns_address','127.0.0.1')]
   def check():return subprocess.run([str(v) for v in args]+['-check','-verify',f'127.0.0.1:{m["dns_port"]}'],capture_output=True,text=True)
   try:
-   subprocess.run([str(ROOT/'bin/dis-demo'),'-url',f'http://127.0.0.1:{m["api_port"]}'],check=True,capture_output=True,text=True)
+   subprocess.run([str(ROOT/'bin/dis-demo'),'-url',f'http://127.0.0.1:{m["api_port"]}','-domain',load()['topology']['domain']],check=True,capture_output=True,text=True)
    if check().returncode==0:raise RuntimeError('Projection changed while publisher was stopped')
   finally:
    output=(servicesdir/'sync.log').open('ab');p=subprocess.Popen([str(v) for v in args],stdout=output,stderr=output,start_new_session=True);output.close()

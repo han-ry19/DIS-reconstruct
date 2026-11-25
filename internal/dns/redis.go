@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const cacheKey = "_dis:projection:v1"
+const cacheKey = "_dis:projection:v2"
 
 // ProjectionCheckpoint couples the published business state and event position.
 type ProjectionCheckpoint struct {
@@ -47,12 +47,8 @@ func LoadProjection(address string) (ProjectionCheckpoint, bool, error) {
 	if e = json.Unmarshal(b, &p); e != nil {
 		return p, false, e
 	}
-	if p.State.Identities != nil {
-		return p, true, nil
-	}
 	s := domain.NewState(p.State.Domain)
 	s.Sequence = p.State.Sequence
-	s.ReceiptSequence = p.State.ReceiptSequence
 	load := func(key string, consume func(string, []byte) error) error {
 		values, e := redis.StringMap(c.Do("HGETALL", key))
 		if e != nil {
@@ -95,12 +91,6 @@ func LoadProjection(address string) (ProjectionCheckpoint, bool, error) {
 	}); e != nil {
 		return p, false, e
 	}
-	if s.ReceiptSequence {
-		s.AppliedRequests = map[string]bool{}
-		if e = load("_dis:applied", func(k string, b []byte) error { s.AppliedRequests[k] = true; return nil }); e != nil {
-			return p, false, e
-		}
-	}
 	if _, e = c.Do("MULTI"); e != nil {
 		return p, false, e
 	}
@@ -117,8 +107,8 @@ func LoadProjection(address string) (ProjectionCheckpoint, bool, error) {
 // RedisRecord retains the original DIS plugin's per-label JSON representation.
 type RedisRecord map[string]any
 
-func encodeRecords(s domain.State) (map[string]map[string]string, error) {
-	zones, e := Project(s)
+func encodeRecords(s domain.State, nsAddress ...string) (map[string]map[string]string, error) {
+	zones, e := Project(s, nsAddress...)
 	if e != nil {
 		return nil, e
 	}
@@ -175,7 +165,7 @@ func encodeRecords(s domain.State) (map[string]map[string]string, error) {
 }
 
 // SaveProjection atomically publishes records, cached objects, and event position.
-func SaveProjection(address string, p ProjectionCheckpoint, full bool) error {
+func SaveProjection(address string, p ProjectionCheckpoint, full bool, nsAddress ...string) error {
 	c, e := ConnectRedis(address)
 	if e != nil {
 		return e
@@ -194,10 +184,13 @@ func SaveProjection(address string, p ProjectionCheckpoint, full bool) error {
 		if e = json.Unmarshal(raw, &old); e != nil {
 			return e
 		}
-		if old.State.Domain != p.State.Domain || old.State.Sequence > p.State.Sequence {
+		if old.State.Domain != p.State.Domain || old.State.Sequence > p.State.Sequence || old.Block > p.Block {
 			return fmt.Errorf("stale Redis projection")
 		}
 		if old.State.Sequence == p.State.Sequence {
+			if old.Block == p.Block && old.Transaction != p.Transaction {
+				return fmt.Errorf("conflicting event checkpoint")
+			}
 			expected := old.Digest
 			if expected == "" {
 				recovered, ok, err := LoadProjection(address)
@@ -218,7 +211,7 @@ func SaveProjection(address string, p ProjectionCheckpoint, full bool) error {
 			}
 		}
 	}
-	full = full || !exists || old.State.Identities != nil
+	full = full || !exists
 	delta := domain.NewState(p.State.Domain)
 	delta.Sequence = p.State.Sequence
 	if full {
@@ -236,7 +229,7 @@ func SaveProjection(address string, p ProjectionCheckpoint, full bool) error {
 			delta.Authorizations[domain.AuthorizationKey(a.DataID, a.OwnerID, a.Recipient)] = a
 		}
 	}
-	next, e := encodeRecords(delta)
+	next, e := encodeRecords(delta, nsAddress...)
 	if e != nil {
 		return e
 	}
@@ -250,7 +243,7 @@ func SaveProjection(address string, p ProjectionCheckpoint, full bool) error {
 		}
 	}
 	metadata := p
-	metadata.State = domain.State{Domain: p.State.Domain, Sequence: p.State.Sequence, ReceiptSequence: p.State.ReceiptSequence}
+	metadata.State = domain.State{Domain: p.State.Domain, Sequence: p.State.Sequence}
 	b, e := json.Marshal(metadata)
 	if e != nil {
 		return e
@@ -319,20 +312,6 @@ func SaveProjection(address string, p ProjectionCheckpoint, full bool) error {
 			}
 		}
 	}
-	if full {
-		if e = c.Send("DEL", "_dis:applied"); e != nil {
-			return e
-		}
-		for k := range p.State.AppliedRequests {
-			if e = c.Send("HSET", "_dis:applied", k, "1"); e != nil {
-				return e
-			}
-		}
-	} else if p.Change != nil && p.Change.RequestKey != "" {
-		if e = c.Send("HSET", "_dis:applied", p.Change.RequestKey, "1"); e != nil {
-			return e
-		}
-	}
 	if e = c.Send("SET", cacheKey, b); e != nil {
 		return e
 	}
@@ -350,15 +329,6 @@ func SaveProjection(address string, p ProjectionCheckpoint, full bool) error {
 func ApplyChange(s *domain.State, c domain.Change) error {
 	if c.Domain != s.Domain {
 		return fmt.Errorf("event domain mismatch")
-	}
-	if c.RequestKey != "" {
-		if !s.ReceiptSequence {
-			return fmt.Errorf("receipt event requires receipt-count snapshot")
-		}
-		if s.AppliedRequests[c.RequestKey] {
-			return nil
-		}
-		c.Sequence = s.Sequence + 1
 	}
 	if c.Sequence <= s.Sequence {
 		return nil
@@ -390,11 +360,5 @@ func ApplyChange(s *domain.State, c domain.Change) error {
 		return fmt.Errorf("unknown event operation")
 	}
 	s.Sequence = c.Sequence
-	if c.RequestKey != "" {
-		if s.AppliedRequests == nil {
-			s.AppliedRequests = map[string]bool{}
-		}
-		s.AppliedRequests[c.RequestKey] = true
-	}
 	return nil
 }

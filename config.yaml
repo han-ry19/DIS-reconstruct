@@ -18,3 +18,4 @@ services:
   api_port: 38080
   dns_port: 38530
   redis_port: 38679
+  ns_address: 127.0.0.1

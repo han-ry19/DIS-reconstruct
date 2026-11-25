@@ -29,7 +29,9 @@ def startup_summary(config):
     for node in orderers + peers:
         address = network['hosts'][node['host']]['address']
         log(f"{node['name']}: {address}:{node['port']} (host: {node['host']})")
+    log('Advertised nameserver IPv4: ' + config['services'].get('ns_address', '127.0.0.1'))
     for name, port in config['services'].items():
+        if name == 'ns_address': continue
         transport = 'UDP/TCP' if name == 'dns_port' else 'TCP'
         log(f"{name.removesuffix('_port').upper()} listener: 127.0.0.1:{port} ({transport})")
     log('Fabric logs: ' + str(Path(config['runtime']) / 'fabric'))

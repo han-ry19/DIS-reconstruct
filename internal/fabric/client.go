@@ -115,7 +115,7 @@ func (b *Backend) View() (domain.State, error) {
 func classify(e error) error {
 	var commit *client.CommitError
 	if errors.As(e, &commit) && (commit.Code == peer.TxValidationCode_MVCC_READ_CONFLICT || commit.Code == peer.TxValidationCode_PHANTOM_READ_CONFLICT) {
-		return fmt.Errorf("%w: transaction %s must be resubmitted after a ledger conflict", domain.ErrConflict, commit.TransactionID)
+		return fmt.Errorf("%w: transaction %s must be resubmitted after a ledger conflict", errors.Join(domain.ErrConflict, domain.ErrLedgerConflict), commit.TransactionID)
 	}
 	var endorsement *client.EndorseError
 	if !errors.As(e, &endorsement) {
@@ -138,7 +138,7 @@ func classify(e error) error {
 
 // CheckEndorsement verifies discovery and the deployed policy without committing.
 func (b *Backend) CheckEndorsement() error {
-	proposal, e := b.contract.NewProposal("GetSnapshot")
+	proposal, e := b.contract.NewProposal("GetDomain")
 	if e != nil {
 		return e
 	}

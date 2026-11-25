@@ -62,6 +62,8 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual([Path(c[0][1]).name for c in commands], ['network.py', 'services.py'])
         for _, kwargs in commands:
             self.assertEqual(kwargs['env']['DIS_RUNTIME'], cfg['runtime'])
+        self.assertIn('--ns-address', commands[1][0])
+        self.assertIn('127.0.0.1', commands[1][0])
         self.assertIn('--api-port', commands[1][0])
         self.assertIn('38080', commands[1][0])
         commands.clear()
@@ -69,6 +71,15 @@ class ConfigurationTests(unittest.TestCase):
             launcher.execute(cfg, 'down')
         self.assertEqual([Path(c[0][1]).name for c in commands], ['services.py', 'network.py'])
 
+
+    def test_nameserver_address(self):
+        self.raw['services']['ns_address'] = '192.0.2.53'
+        self.assertEqual(self.load()['services']['ns_address'], '192.0.2.53')
+        for value in ('not-an-ip', '::1', 123):
+            self.raw['services']['ns_address'] = value
+            with self.assertRaises(ValueError): self.load()
+        del self.raw['services']['ns_address']
+        self.load()
 
     def test_failed_start_does_not_report_ready(self):
         from contextlib import redirect_stdout

@@ -72,8 +72,6 @@ func TestLiveRedisRecipientMoveAndUpdates(t *testing.T) {
 		t.Fatal(e)
 	}
 	s := fixture()
-	s.ReceiptSequence = true
-	s.AppliedRequests = map[string]bool{}
 	p := ProjectionCheckpoint{State: s, Block: 10, Transaction: "setup"}
 	if e = SaveProjection(address, p, true); e != nil {
 		t.Fatal(e)
@@ -81,7 +79,7 @@ func TestLiveRedisRecipientMoveAndUpdates(t *testing.T) {
 	old := s.Authorizations["sample.data|alice.uid|app.uid"]
 	a := old
 	a.Recipient = "other.uid"
-	change := domain.Change{Domain: s.Domain, RequestKey: "alice.uid|move", Operation: "authorization.update", Authorization: &a, RemovedAuthorizations: []domain.AuthorizationRecord{old}}
+	change := domain.Change{Domain: s.Domain, Sequence: p.State.Sequence + 1, RequestKey: "alice.uid|move", Operation: "authorization.update", Authorization: &a, RemovedAuthorizations: []domain.AuthorizationRecord{old}}
 	if e = ApplyChange(&p.State, change); e != nil {
 		t.Fatal(e)
 	}
@@ -109,7 +107,7 @@ func TestLiveRedisRecipientMoveAndUpdates(t *testing.T) {
 	}
 	d := p.State.Data["sample.data"]
 	d.Address = "https://example.org/new"
-	change = domain.Change{Domain: s.Domain, RequestKey: "alice.uid|address", Operation: "data.update", Data: &d}
+	change = domain.Change{Domain: s.Domain, Sequence: p.State.Sequence + 1, RequestKey: "alice.uid|address", Operation: "data.update", Data: &d}
 	if e = ApplyChange(&p.State, change); e != nil {
 		t.Fatal(e)
 	}
@@ -120,7 +118,7 @@ func TestLiveRedisRecipientMoveAndUpdates(t *testing.T) {
 		t.Fatal(e)
 	}
 	a.Status = domain.AuthorizationRejected
-	change = domain.Change{Domain: s.Domain, RequestKey: "alice.uid|revoke", Operation: "authorization.update", Authorization: &a}
+	change = domain.Change{Domain: s.Domain, Sequence: p.State.Sequence + 1, RequestKey: "alice.uid|revoke", Operation: "authorization.update", Authorization: &a}
 	if e = ApplyChange(&p.State, change); e != nil {
 		t.Fatal(e)
 	}

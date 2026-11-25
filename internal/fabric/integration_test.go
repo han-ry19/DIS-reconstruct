@@ -23,7 +23,7 @@ func TestLiveFabricWorkflow(t *testing.T) {
 		t.Fatal(e)
 	}
 	defer backend.Close()
-	state, e := backend.View()
+	state, e := replayedView(backend)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -94,7 +94,7 @@ func TestLiveFabricWorkflow(t *testing.T) {
 	}
 	decision := req("authorization.decide", ownerID, "approve", p, owner)
 	accepted := submit(decision)
-	got, e := backend.View()
+	got, e := replayedView(backend)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -125,7 +125,7 @@ func TestLiveFabricWorkflow(t *testing.T) {
 	}
 	assertReapplicationRejected := func(label string) {
 		t.Helper()
-		before, err := backend.View()
+		before, err := replayedView(backend)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -133,7 +133,7 @@ func TestLiveFabricWorkflow(t *testing.T) {
 		if _, err := backend.Submit(repeat); !errors.Is(err, domain.ErrConflict) {
 			t.Fatalf("%s reapplication: %v", label, err)
 		}
-		after, err := backend.View()
+		after, err := replayedView(backend)
 		if err != nil {
 			t.Fatal(err)
 		}

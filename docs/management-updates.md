@@ -4,7 +4,7 @@ The management path implements the data and authorization update operations in S
 
 ## Signed operations
 
-Submit updates through POST /v1/transactions using the same signed request envelope as registration. The actor is the current data owner. The signature includes field, new_content, and authorization_owner. Each operation changes one field; changing several fields requires several transactions, as in the paper algorithms.
+Submit updates through POST /v1/transactions using the same signed request envelope as registration. The actor is the current data owner. The signature includes field and new_content. Each operation changes one field; changing several fields requires several transactions, as in the paper algorithms.
 
 | Operation | field | new_content | Effect |
 |---|---|---|---|
@@ -16,7 +16,7 @@ Submit updates through POST /v1/transactions using the same signed request envel
 | authorization.update | recipient | Registered application identity | Move the authorization to the new recipient |
 | authorization.update | expires_at | Positive Unix seconds encoded as a string | Replace expiration; a past value expires the grant |
 
-Data updates require data_id. Authorization updates also require recipient, identifying the existing authorization. authorization_owner selects its original issuer and defaults to the current data owner.
+Data updates require data_id. Authorization updates also require recipient, identifying the existing authorization. The contract selects the unique (data, recipient) record, then checks the current data owner.
 
 A signed request uses a fresh request_id. Retrying the exact request returns the recorded result. Reusing that request ID with changed signed content returns a conflict.
 
@@ -49,7 +49,7 @@ Limits are measured in UTF-8 bytes. Addresses accept up to 1024 bytes for both r
 
 ## Ownership and recipient changes
 
-An RP update changes the data owner and preserves existing authorization records, consistent with Algorithm 7's single-field update. The former owner cannot make subsequent changes. The new owner can manage an existing grant by naming its original authorization_owner. This parameter must match the issuer retained in the data/recipient authorization record.
+An RP update changes the data owner and preserves existing authorization records, consistent with Algorithm 7's single-field update. The former owner cannot make subsequent changes. The new owner can decide an existing pending request or update a grant using data_id and recipient. The original issuer remains in owner_id. Decisions set issued_at; changing a pending record to approved or rejected through a status update also sets issued_at.
 
 DNS authorization names contain the recipient and data identifier. Changing recipient removes the old authorization key and DNS label before publishing the replacement. A collision with another confirmed or pending authorization is rejected, including authorizations retained from a previous owner. An application cannot create a second issuer-specific grant at the same DNS name after ownership transfer; the current owner can edit the existing record.
 
@@ -72,7 +72,7 @@ The internal index encodes the transaction ID and identifier using Base64. New r
 
 GetTransactionInfo combines object and per-recipient transaction information when queried; management writes do not update a shared latest-transaction record. It selects the greatest execution timestamp (seconds and nanoseconds), with transaction ID as a deterministic tie-breaker. This is execution-time metadata, not a global commit-order counter.
 
-The contract exposes TransDOIToIndex, TransIndexToDOI, GetTransactionInfo, GetOwnedData, and GetAuthorizedData, each taking one identifier (TransIndexToDOI takes an internal index). The list queries validate authoritative business records, with approved status and unexpired authorization required for recipient access. Fresh deployments query the owner's or recipient's association index and validate each referenced business record, including pending status and expiration. Earlier deployments retain the snapshot lookup to include records created before index maintenance; a fresh runtime enables the indexed path.
+The contract exposes TransDOIToIndex, TransIndexToDOI, GetTransactionInfo, GetOwnedData, and GetAuthorizedData, each taking one identifier (TransIndexToDOI takes an internal index). The list queries validate authoritative business records, with approved status and unexpired authorization required for recipient access. Queries use the owner's or recipient's association index and validate each referenced business record, including status and expiration.
 
 ## Event publication
 

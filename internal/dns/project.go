@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/han-ry19/DIS-reconstruct/internal/domain"
 	mdns "github.com/miekg/dns"
+	"net"
 	"sort"
 	"strings"
 )
@@ -32,21 +33,31 @@ func text(name, value string) *mdns.TXT {
 	chunks = append(chunks, value)
 	return &mdns.TXT{Hdr: header(name, mdns.TypeTXT), Txt: chunks}
 }
-func base(zone string, serial uint32) []mdns.RR {
+func base(zone string, serial uint32, address net.IP) []mdns.RR {
 	return []mdns.RR{
 		&mdns.SOA{Hdr: header(zone, mdns.TypeSOA), Ns: "ns." + zone, Mbox: "hostmaster." + zone, Serial: serial, Refresh: 60, Retry: 30, Expire: 86400, Minttl: 60},
 		&mdns.NS{Hdr: header(zone, mdns.TypeNS), Ns: "ns." + zone},
-		&mdns.A{Hdr: header("ns."+zone, mdns.TypeA), A: []byte{127, 0, 0, 1}},
+		&mdns.A{Hdr: header("ns."+zone, mdns.TypeA), A: address},
 	}
 }
 
 // Project implements Dominate's CERT/TXT, RP/URI/TXT, and authorization TXT mapping.
-func Project(s domain.State) (map[string][]mdns.RR, error) {
+func Project(s domain.State, nsAddress ...string) (map[string][]mdns.RR, error) {
+	address := net.ParseIP("127.0.0.1").To4()
+	if len(nsAddress) > 1 {
+		return nil, fmt.Errorf("expected one NS IPv4 address")
+	}
+	if len(nsAddress) == 1 {
+		address = net.ParseIP(nsAddress[0]).To4()
+		if address == nil {
+			return nil, fmt.Errorf("NS glue address must be IPv4")
+		}
+	}
 	if s.Sequence >= uint64(^uint32(0)) {
 		return nil, fmt.Errorf("DNS serial exhausted")
 	}
 	serial := uint32(s.Sequence) + 1
-	zones := map[string][]mdns.RR{"uid.": base("uid.", serial), "data.": base("data.", serial)}
+	zones := map[string][]mdns.RR{"uid.": base("uid.", serial, address), "data.": base("data.", serial, address)}
 	for _, id := range s.Identities {
 		if !IdentityName(id.ID) {
 			return nil, fmt.Errorf("identity outside uid zone: %s", id.ID)

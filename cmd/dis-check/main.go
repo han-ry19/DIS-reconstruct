@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -31,7 +32,7 @@ func main() {
 		}
 		time.Sleep(300 * time.Millisecond)
 	}
-	state, e := b.View()
+	state, _, e := b.Rebuild(context.Background())
 	if e != nil {
 		fmt.Fprintln(os.Stderr, e)
 		os.Exit(1)

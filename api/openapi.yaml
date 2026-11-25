@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: DIS-reconstruct API
-  version: 0.3.0
+  version: 0.4.0
   description: Signed DIS operations through Fabric or the development file backend.
 servers:
   - url: http://localhost:38080
@@ -33,7 +33,15 @@ paths:
         '404':
           description: Referenced record does not exist
         '409':
-          description: Conflicting identifier, existing authorization, changed request ID content, or concurrent ledger update
+          description: Business conflict (code=conflict, retryable=false) or Fabric MVCC/phantom-read conflict (code=ledger_conflict, retryable=true).
+          headers:
+            Retry-After:
+              description: Delay in seconds before resubmitting a retryable ledger conflict; absent for business conflicts.
+              schema: {type: integer, example: 1}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
   /v1/identities/{id}:
     get:
       parameters:
@@ -65,6 +73,13 @@ paths:
         '404': {description: Authorization not found}
 components:
   schemas:
+    Problem:
+      type: object
+      required: [error, code, retryable]
+      properties:
+        error: {type: string}
+        code: {type: string, enum: [invalid_request, unauthorized, not_found, conflict, ledger_conflict, internal_error]}
+        retryable: {type: boolean}
     Request:
       type: object
       additionalProperties: false
@@ -87,9 +102,6 @@ components:
             new_content:
               type: string
               description: 'Replacement field value; permissions is a JSON array string and expires_at is Unix seconds as a string.'
-            authorization_owner:
-              type: string
-              description: Original issuer of an existing authorization after an ownership transfer; defaults to the current owner.
             identity_id: {type: string}
             public_key: {type: string, description: Base64 Ed25519 public key}
             kind: {type: string, enum: [user, application]}

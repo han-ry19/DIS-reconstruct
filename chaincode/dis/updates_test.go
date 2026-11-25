@@ -25,8 +25,6 @@ type managementHarness struct {
 func newManagementHarness(t *testing.T) *managementHarness {
 	t.Helper()
 	h := &managementHarness{t: t, stub: shimtest.NewMockStub("dis", &Contract{}), keys: map[string]ed25519.PrivateKey{}, projected: domain.NewState("management")}
-	h.projected.ReceiptSequence = true
-	h.projected.AppliedRequests = map[string]bool{}
 	if r := h.stub.MockInit("init", [][]byte{[]byte("Init"), []byte("management")}); r.Status != 200 {
 		t.Fatal(r.Message)
 	}
@@ -86,6 +84,7 @@ func (h *managementHarness) submit(op, actor string, p domain.Parameters, ok boo
 		if e := json.Unmarshal(event.Payload, &change); e != nil {
 			h.t.Fatal(e)
 		}
+		change.Sequence = h.projected.Sequence + 1
 		if e := projection.ApplyChange(&h.projected, change); e != nil {
 			h.t.Fatal(e)
 		}
@@ -96,6 +95,7 @@ func (h *managementHarness) submit(op, actor string, p domain.Parameters, ok boo
 	if e := json.Unmarshal(h.query("GetSnapshot"), &state); e != nil {
 		h.t.Fatal(e)
 	}
+	state.Sequence = h.projected.Sequence
 	a, _ := projection.Digest(state)
 	bhash, _ := projection.Digest(h.projected)
 	if a != bhash {
@@ -170,7 +170,7 @@ func TestManagementLedgerAndIndexes(t *testing.T) {
 			t.Fatal("ownership index did not move", kind)
 		}
 	}
-	p := domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", AuthorizationOwner: "alice.uid", Recipient: "other.uid", Field: "status", NewContent: "rejected"}
+	p := domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "other.uid", Field: "status", NewContent: "rejected"}
 	h.submit("authorization.update", "alice.uid", p, false)
 	h.submit("authorization.update", "bob.uid", p, true)
 	var listing []domain.DataIdentifier
@@ -210,13 +210,6 @@ func TestPendingUpdateAndCollision(t *testing.T) {
 	h := newManagementHarness(t)
 	h.submit("authorization.request", "app.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}, true)
 	h.submit("authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Field: "recipient", NewContent: "other.uid"}, true)
-	d, _, e := object(h.stub, "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data")
-	if e != nil {
-		t.Fatal(e)
-	}
-	if len(d.Authorizations) != 0 {
-		t.Fatal("pending rename resurrected old confirmed grant", d)
-	}
 	var a domain.AuthorizationRecord
 	json.Unmarshal(h.query("GetAuthorization", "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", "alice.uid", "other.uid"), &a)
 	if a.Status != domain.AuthorizationPending {
@@ -227,9 +220,9 @@ func TestPendingUpdateAndCollision(t *testing.T) {
 	h.submit("authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "other.uid", Field: "recipient", NewContent: "app.uid"}, false)
 	// Moving back removes the pending key too; no old pending entry survives.
 	h.submit("authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Field: "status", NewContent: "rejected"}, true)
-	pendingKey, _ := key(h.stub, pendingKind, "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", "alice.uid", "app.uid")
-	if len(h.stub.State[pendingKey]) != 0 {
-		t.Fatal("finalized authorization remained pending")
+	json.Unmarshal(h.query("GetAuthorization", "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", "alice.uid", "app.uid"), &a)
+	if a.Status != domain.AuthorizationRejected || a.IssuedAt == 0 {
+		t.Fatal("pending status update missing decision time", a)
 	}
 }
 func TestPendingCollisionFromHistoricalIssuer(t *testing.T) {
@@ -239,4 +232,46 @@ func TestPendingCollisionFromHistoricalIssuer(t *testing.T) {
 	h.submit("authorization.request", "app.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}, true)
 	h.submit("authorization.update", "bob.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Field: "recipient", NewContent: "other.uid"}, false)
 	h.submit("authorization.request", "other.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "other.uid", Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}, false)
+}
+
+func TestPendingDecisionAfterOwnershipTransfer(t *testing.T) {
+	for _, viaUpdate := range []bool{false, true} {
+		t.Run(fmt.Sprint(viaUpdate), func(t *testing.T) {
+			h := newManagementHarness(t)
+			data := "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data"
+			h.submit("authorization.request", "app.uid", domain.Parameters{DataID: data, Recipient: "app.uid", Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}, true)
+			h.submit("data.update", "alice.uid", domain.Parameters{DataID: data, Field: "RP", NewContent: "bob.uid"}, true)
+			op := "authorization.decide"
+			params := domain.Parameters{DataID: data, Recipient: "app.uid", Status: domain.AuthorizationApproved}
+			if viaUpdate {
+				op = "authorization.update"
+				params.Status = ""
+				params.Field = "status"
+				params.NewContent = "approved"
+			}
+			h.submit(op, "alice.uid", params, false)
+			h.submit(op, "bob.uid", params, true)
+			var a domain.AuthorizationRecord
+			json.Unmarshal(h.query("GetAuthorization", data, "alice.uid", "app.uid"), &a)
+			if a.Status != domain.AuthorizationApproved || a.IssuedAt <= 0 || a.OwnerID != "alice.uid" {
+				t.Fatal(a)
+			}
+		})
+	}
+}
+
+func TestSnapshotDoesNotReadOrReturnReceipts(t *testing.T) {
+	h := newManagementHarness(t)
+	before := h.query("GetSnapshot")
+	// Malformed receipts would fail a scan; snapshot must not visit them.
+	h.stub.MockTransactionStart("receipt-seed")
+	for i := 0; i < 1000; i++ {
+		k, _ := key(h.stub, receiptKind, "unused.uid", fmt.Sprint(i))
+		h.stub.PutState(k, []byte("not-json"))
+	}
+	h.stub.MockTransactionEnd("receipt-seed")
+	after := h.query("GetSnapshot")
+	if string(before) != string(after) {
+		t.Fatal("snapshot changed with retry history")
+	}
 }

@@ -3,30 +3,20 @@ package dis
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/han-ry19/DIS-reconstruct/internal/domain"
 	"github.com/hyperledger/fabric-chaincode-go/shim"
 )
 
-const legacyKey = "dis.state.v1"
-const metadataKey = "dis.metadata.v2"
+const metadataKey = "dis.metadata.v4"
 const identityKind = "Identity"
 const dataKind = "DataObject"
-const pendingKind = "AuthorizationUnconfirmed"
 const receiptKind = "RequestReceipt"
 
-type metadata struct {
-	IndependentAuthorizations bool
-	IndexedQueries            bool
-	ReceiptSequence           bool
-	Domain                    string
-	Sequence                  uint64
-}
+type metadata struct{ Domain string }
 type dataObject struct {
-	Data           domain.DataIdentifier                 `json:"data"`
-	Authorizations map[string]domain.AuthorizationRecord `json:"authorizations"`
+	Data domain.DataIdentifier `json:"data"`
 }
 
 func key(stub shim.ChaincodeStubInterface, kind string, attributes ...string) (string, error) {
@@ -72,7 +62,7 @@ func getMetadata(stub shim.ChaincodeStubInterface) (metadata, error) {
 		return m, e
 	}
 	if b == nil {
-		return m, fmt.Errorf("ledger requires initialization or MigrateState")
+		return m, fmt.Errorf("ledger requires initialization for schema 4")
 	}
 	e = json.Unmarshal(b, &m)
 	return m, e
@@ -87,16 +77,13 @@ func putMetadata(stub shim.ChaincodeStubInterface, m metadata) error {
 func object(stub shim.ChaincodeStubInterface, id string) (dataObject, bool, error) {
 	var d dataObject
 	ok, e := read(stub, dataKind, &d, id)
-	if d.Authorizations == nil {
-		d.Authorizations = map[string]domain.AuthorizationRecord{}
-	}
 	return d, ok, e
 }
 
 // loadRequest reads only the business objects and receipt used by this operation.
 func loadRequest(stub shim.ChaincodeStubInterface, m metadata, r domain.Request) (domain.State, dataObject, error) {
 	s := domain.NewState(m.Domain)
-	s.Sequence = m.Sequence
+	s.Sequence = 0
 	var id domain.Identity
 	if ok, e := read(stub, identityKind, &id, r.Actor); e != nil {
 		return s, dataObject{}, e
@@ -109,7 +96,7 @@ func loadRequest(stub shim.ChaincodeStubInterface, m metadata, r domain.Request)
 	} else if ok {
 		s.Receipts[r.Actor+"|"+r.RequestID] = receipt
 	}
-	d := dataObject{Authorizations: map[string]domain.AuthorizationRecord{}}
+	d := dataObject{}
 	if r.Parameters.DataID != "" {
 		value, ok, e := object(stub, r.Parameters.DataID)
 		if e != nil {
@@ -118,9 +105,6 @@ func loadRequest(stub shim.ChaincodeStubInterface, m metadata, r domain.Request)
 		d = value
 		if ok {
 			s.Data[d.Data.ID] = d.Data
-			for k, a := range d.Authorizations {
-				s.Authorizations[k] = a
-			}
 			if r.Operation == "data.update" && r.Parameters.Field == "RP" || r.Operation == "authorization.update" && r.Parameters.Field == "recipient" {
 				var next domain.Identity
 				if found, err := read(stub, identityKind, &next, r.Parameters.NewContent); err != nil {
@@ -129,34 +113,13 @@ func loadRequest(stub shim.ChaincodeStubInterface, m metadata, r domain.Request)
 					s.Identities[next.ID] = next
 				}
 			}
-			if m.IndependentAuthorizations {
-				if err := loadAuthorization(stub, &s, d.Data.ID, r.Parameters.Recipient); err != nil {
+			if err := loadAuthorization(stub, &s, d.Data.ID, r.Parameters.Recipient); err != nil {
+				return s, d, err
+			}
+			if r.Operation == "authorization.update" && r.Parameters.Field == "recipient" {
+				if err := loadAuthorization(stub, &s, d.Data.ID, r.Parameters.NewContent); err != nil {
 					return s, d, err
 				}
-				if r.Operation == "authorization.update" && r.Parameters.Field == "recipient" {
-					if err := loadAuthorization(stub, &s, d.Data.ID, r.Parameters.NewContent); err != nil {
-						return s, d, err
-					}
-				}
-			} else {
-				it, err := stub.GetStateByPartialCompositeKey(pendingKind, []string{d.Data.ID})
-				if err != nil {
-					return s, d, err
-				}
-				for it.HasNext() {
-					entry, err := it.Next()
-					if err != nil {
-						it.Close()
-						return s, d, err
-					}
-					var a domain.AuthorizationRecord
-					if err = json.Unmarshal(entry.Value, &a); err != nil {
-						it.Close()
-						return s, d, err
-					}
-					s.Authorizations[domain.AuthorizationKey(a.DataID, a.OwnerID, a.Recipient)] = a
-				}
-				it.Close()
 			}
 		}
 	}
@@ -181,7 +144,7 @@ func scan(stub shim.ChaincodeStubInterface, kind string, fn func([]byte) error) 
 }
 func snapshot(stub shim.ChaincodeStubInterface, m metadata) (domain.State, error) {
 	s := domain.NewState(m.Domain)
-	s.Sequence = m.Sequence
+	s.Sequence = 0
 	e := scan(stub, identityKind, func(b []byte) error {
 		var v domain.Identity
 		if e := json.Unmarshal(b, &v); e != nil {
@@ -199,97 +162,36 @@ func snapshot(stub shim.ChaincodeStubInterface, m metadata) (domain.State, error
 			return e
 		}
 		s.Data[v.Data.ID] = v.Data
-		for k, a := range v.Authorizations {
-			s.Authorizations[k] = a
-		}
 		return nil
 	})
 	if e != nil {
 		return s, e
 	}
-	e = scan(stub, pendingKind, func(b []byte) error {
-		var v domain.AuthorizationRecord
-		if e := json.Unmarshal(b, &v); e != nil {
-			return e
+	e = scan(stub, authorizationKind, func(b []byte) error {
+		var a domain.AuthorizationRecord
+		if err := json.Unmarshal(b, &a); err != nil {
+			return err
 		}
-		s.Authorizations[domain.AuthorizationKey(v.DataID, v.OwnerID, v.Recipient)] = v
+		s.Authorizations[domain.AuthorizationKey(a.DataID, a.OwnerID, a.Recipient)] = a
 		return nil
 	})
-	if e != nil {
-		return s, e
-	}
-	if m.IndependentAuthorizations {
-		e = scan(stub, authorizationKind, func(b []byte) error {
-			var a domain.AuthorizationRecord
-			if err := json.Unmarshal(b, &a); err != nil {
-				return err
-			}
-			s.Authorizations[domain.AuthorizationKey(a.DataID, a.OwnerID, a.Recipient)] = a
-			return nil
-		})
-		if e != nil {
-			return s, e
-		}
-	}
-	if m.ReceiptSequence {
-		s.ReceiptSequence = true
-		s.AppliedRequests = map[string]bool{}
-		e = scan(stub, receiptKind, func(b []byte) error {
-			var receipt domain.Receipt
-			if e := json.Unmarshal(b, &receipt); e != nil {
-				return e
-			}
-			// The receipt stores the actor separately from its public result.
-			if receipt.Actor == "" {
-				return fmt.Errorf("receipt missing actor")
-			}
-			s.AppliedRequests[receipt.Actor+"|"+receipt.Result.RequestID] = true
-			return nil
-		})
-		s.Sequence = m.Sequence + uint64(len(s.AppliedRequests))
-	}
 	return s, e
 }
+
 func persist(stub shim.ChaincodeStubInterface, s domain.State, r domain.Request, d dataObject, result domain.Result) error {
 	before := d
-	m, err := getMetadata(stub)
-	if err != nil {
-		return err
-	}
-	independent := m.IndependentAuthorizations && strings.HasPrefix(r.Operation, "authorization.")
-	if independent {
+	if strings.HasPrefix(r.Operation, "authorization.") {
 		if err := persistIndependentAuthorization(stub, s, r, result); err != nil {
 			return err
 		}
+	} else if r.Operation == "identity.register" {
+		if err := put(stub, identityKind, s.Identities[result.ObjectID], result.ObjectID); err != nil {
+			return err
+		}
 	} else {
-		switch r.Operation {
-		case "identity.register":
-			if e := put(stub, identityKind, s.Identities[result.ObjectID], result.ObjectID); e != nil {
-				return e
-			}
-		case "data.register", "data.update":
-			d.Data = s.Data[result.ObjectID]
-			if e := put(stub, dataKind, d, result.ObjectID); e != nil {
-				return e
-			}
-		case "authorization.request":
-			a := s.Authorizations[result.ObjectID]
-			if e := put(stub, pendingKind, a, a.DataID, a.OwnerID, a.Recipient); e != nil {
-				return e
-			}
-		case "authorization.update":
-			if e := persistAuthorizationUpdate(stub, s, r, d, result); e != nil {
-				return e
-			}
-		case "authorization.decide":
-			a := s.Authorizations[result.ObjectID]
-			d.Authorizations[result.ObjectID] = a
-			if e := put(stub, dataKind, d, a.DataID); e != nil {
-				return e
-			}
-			if e := remove(stub, pendingKind, a.DataID, a.OwnerID, a.Recipient); e != nil {
-				return e
-			}
+		d.Data = s.Data[result.ObjectID]
+		if err := put(stub, dataKind, d, result.ObjectID); err != nil {
+			return err
 		}
 	}
 	if e := persistSourceIndexes(stub, s, r, before, result); e != nil {
@@ -298,90 +200,5 @@ func persist(stub shim.ChaincodeStubInterface, s domain.State, r domain.Request,
 	if e := put(stub, receiptKind, s.Receipts[r.Actor+"|"+r.RequestID], r.Actor, r.RequestID); e != nil {
 		return e
 	}
-	if m.ReceiptSequence {
-		return nil
-	}
-	m.Sequence = s.Sequence
-	return putMetadata(stub, m)
-}
-
-// migrate preserves existing identifiers and receipts while replacing the v1 document.
-func migrate(stub shim.ChaincodeStubInterface) error {
-	existing, e := stub.GetState(metadataKey)
-	if e != nil {
-		return e
-	}
-	if existing != nil {
-		return nil
-	}
-	b, e := stub.GetState(legacyKey)
-	if e != nil {
-		return e
-	}
-	if b == nil {
-		return fmt.Errorf("no legacy state")
-	}
-	var s domain.State
-	if e = json.Unmarshal(b, &s); e != nil {
-		return e
-	}
-	names := make([]string, 0, len(s.Identities))
-	for name := range s.Identities {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		if e = put(stub, identityKind, s.Identities[name], name); e != nil {
-			return e
-		}
-	}
-	names = nil
-	for name := range s.Data {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		d := dataObject{Data: s.Data[name], Authorizations: map[string]domain.AuthorizationRecord{}}
-		keys := []string{}
-		for k, a := range s.Authorizations {
-			if a.DataID == name {
-				keys = append(keys, k)
-			}
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			a := s.Authorizations[k]
-			if a.Status == domain.AuthorizationPending {
-				if e = put(stub, pendingKind, a, a.DataID, a.OwnerID, a.Recipient); e != nil {
-					return e
-				}
-			} else {
-				d.Authorizations[k] = a
-			}
-		}
-		if e = put(stub, dataKind, d, name); e != nil {
-			return e
-		}
-	}
-	names = nil
-	for name := range s.Receipts {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		actor, id, ok := strings.Cut(name, "|")
-		if !ok {
-			return fmt.Errorf("invalid legacy receipt")
-		}
-		if e = put(stub, receiptKind, s.Receipts[name], actor, id); e != nil {
-			return e
-		}
-	}
-	if e = putMetadata(stub, metadata{Domain: s.Domain, Sequence: s.Sequence}); e != nil {
-		return e
-	}
-	if e = stub.DelState(legacyKey); e != nil {
-		return e
-	}
-	return stub.SetEvent(domain.FullUpdateEvent, []byte("{}"))
+	return nil
 }

@@ -137,7 +137,7 @@ func TestTransferPreservesGrantsAndChangesManager(t *testing.T) {
 	if !reflect.DeepEqual(s.Authorizations["e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data|alice.uid|app.uid"], old) {
 		t.Fatal("transfer modified existing grant")
 	}
-	p := Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", AuthorizationOwner: "alice.uid", Recipient: "app.uid", Field: "status", NewContent: "rejected"}
+	p := Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Field: "status", NewContent: "rejected"}
 	if _, e := Apply(&s, signedUpdate(t, keys, "authorization.update", "alice.uid", "oldowner", p), updateNow); !errors.Is(e, ErrUnauthorized) {
 		t.Fatal(e)
 	}

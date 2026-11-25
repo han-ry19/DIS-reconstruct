@@ -12,7 +12,7 @@ import (
 func TestCommitConflictClassification(t *testing.T) {
 	for _, code := range []peer.TxValidationCode{peer.TxValidationCode_MVCC_READ_CONFLICT, peer.TxValidationCode_PHANTOM_READ_CONFLICT} {
 		original := &client.CommitError{TransactionID: "test-transaction", Code: code}
-		if err := classify(fmt.Errorf("submit: %w", original)); !errors.Is(err, domain.ErrConflict) {
+		if err := classify(fmt.Errorf("submit: %w", original)); !errors.Is(err, domain.ErrConflict) || !errors.Is(err, domain.ErrLedgerConflict) {
 			t.Fatalf("%v: %v", code, err)
 		}
 	}

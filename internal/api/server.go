@@ -35,21 +35,32 @@ func write(w http.ResponseWriter, status int, v any) {
 }
 func problem(w http.ResponseWriter, e error) {
 	status := 500
+	code := "internal_error"
+	retryable := false
 	switch {
 	case errors.Is(e, domain.ErrInvalid):
 		status = 400
+		code = "invalid_request"
 	case errors.Is(e, domain.ErrUnauthorized):
 		status = 403
+		code = "unauthorized"
 	case errors.Is(e, domain.ErrNotFound):
 		status = 404
+		code = "not_found"
+	case errors.Is(e, domain.ErrLedgerConflict):
+		status = 409
+		code = "ledger_conflict"
+		retryable = true
+		w.Header().Set("Retry-After", "1")
 	case errors.Is(e, domain.ErrConflict):
 		status = 409
+		code = "conflict"
 	}
 	message := "internal server error"
 	if status != 500 {
 		message = e.Error()
 	}
-	write(w, status, map[string]string{"error": message})
+	write(w, status, map[string]any{"error": message, "code": code, "retryable": retryable})
 }
 func (s *Server) submit(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)

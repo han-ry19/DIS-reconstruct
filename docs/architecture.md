@@ -21,13 +21,13 @@ Users and applications sign management requests and submit them to the DIS API. 
 
 ## Ledger organization
 
-Composite keys separate identities, data objects, pending authorizations, and request receipts. Data objects embed decided authorizations. Auxiliary records maintain identifier/index mappings, owner and recipient associations, registration profiles, and transaction information.
+Composite keys separate identities, data objects, authorizations, and request receipts. Each pending or decided authorization has one independent (data, recipient) key; the issuer remains a record value. Auxiliary records maintain identifier/index mappings, owner and recipient associations, registration profiles, and transaction information.
 
-Ordinary updates load affected business objects and the actor's request receipt. Fresh ledgers use transaction IDs and actor-scoped receipts to identify successful operations. Snapshots derive the publication sequence from committed receipts, allowing independent registrations to avoid a shared counter write.
+Ordinary updates load affected business objects and the actor's request receipt. Transactions return their Fabric transaction ID, and actor-scoped receipts serve exact retries. Business writes do not update a shared publication counter. GetSnapshot contains current business records only. The event consumer counts committed management events to derive the DNS publication sequence.
 
 ## Publication and resolution
 
-The publisher initializes from a committed snapshot and follows chaincode events. Redis transactions update DNS records, cached business objects, and the event checkpoint together. Reconnection resumes at the saved block and transaction. Already applied events are skipped; sequence-based legacy ledgers recover detected event gaps through a snapshot.
+The publisher captures a channel height, replays valid DIS events through that block boundary, and then follows later chaincode events. Redis transactions update DNS records, cached business objects, and the event checkpoint together. Reconnection resumes at the saved block and transaction. The saved position excludes already applied events. State and position are committed together, so a failed Redis publication is retried from the previous position. Cold rebuilding streams history while retaining current business objects only.
 
 CoreDNS queries Redis by zone and relative name. Identity records expose public keys; data records expose ownership, address, and signature attributes; authorization records expose status, permissions, and expiration. External data services use these records when authenticating requesters and enforcing access.
 
