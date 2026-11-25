@@ -12,7 +12,7 @@ The architecture is shown in Figure 1 of the first paper and Figure 4 of the sec
 | Data Management | Data registration, field updates, and queries | Bind identifiers to owners, addresses, signatures, and profiles |
 | Authorization Management | Requests, owner decisions, and field updates | Maintain application permissions and expiration |
 | Blockchain Platform | Fabric peers, Raft orderers, and contracts | Validate and record management operations |
-| Update Identifier | Snapshot and committed-event publisher | Publish ledger records to Redis |
+| Update Identifier | Checkpoint recovery and committed-event publisher | Publish ledger records to Redis |
 | Identifier System | Redis-backed CoreDNS | Resolve identity, data, and authorization records |
 | DIS-hub interface in the second paper | DIS API | Provide application-facing management and query endpoints |
 

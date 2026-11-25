@@ -23,7 +23,7 @@ DIS-reconstruct implements the identity, data, and authorization management comp
 | Identity Management | Fabric contracts register user and application identifiers with public keys and verify signed management requests. |
 | Data Management | Fabric contracts register data identifiers and update their owner, address, and submitted data signature. Registration profiles are stored as metadata. |
 | Authorization Management | Fabric contracts record application requests, owner decisions, and changes to authorization status, permissions, recipients, and expiration. |
-| Update Identifier | The synchronization service initializes from a committed snapshot and applies committed Fabric events to Redis with a recovery checkpoint. |
+| Update Identifier | The synchronization service resumes from its persistent Redis checkpoint, or reconstructs current state from committed events when the cache is absent, then applies later events incrementally. |
 | Identifier System | CoreDNS with the disredis plugin returns public keys, data attributes, and authorization records that consumers use for resolution, authentication, and authorization checks. |
 
 Users and applications sign management requests and submit them through the DIS API. Fabric contracts check signatures, ownership, and operation conditions; Fabric validates endorsements and commits transactions. The synchronization service publishes the resulting records to Redis, and CoreDNS answers identifier queries. A successful ledger commit and a DNS-visible update are separate completion points.
@@ -67,13 +67,15 @@ The default configuration starts four organizations with one peer each, four Raf
 | Authoritative DNS | 127.0.0.1:38530, UDP and TCP |
 | Redis | 127.0.0.1:38679 |
 
-Run the signed registration and authorization example and verify DNS publication:
+Run the signed registration and authorization example and check serving consistency:
 
 ~~~bash
 bin/dis-demo -url http://127.0.0.1:38080
-bin/dis-sync -fabric-config runtime/configured/fabric/gateway.json \
+bin/dis-sync \
   -redis 127.0.0.1:38679 -check -verify 127.0.0.1:38530
 ~~~
+
+The serving check compares authoritative DNS with the cached Redis projection. Use the explicit [history audit](docs/runbook.md#audit-committed-history) to compare that projection with Fabric after catch-up.
 
 Certificates, ledger data, publication state, and logs are retained under runtime/configured. Logs are in its fabric/ and services/ subdirectories. Re-running ./run.sh reuses this deployment.
 

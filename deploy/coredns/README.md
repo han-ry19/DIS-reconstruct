@@ -4,7 +4,7 @@ Committed Fabric events update Redis; CoreDNS answers DNS queries through the di
 
 | Component | Role |
 |---|---|
-| cmd/dis-sync | Initial snapshot, committed event consumption, publication, and recovery checkpoints |
+| cmd/dis-sync | Checkpoint recovery, empty-cache history replay, incremental event publication |
 | internal/dns | Record projection, Redis updates, and complete-zone verification |
 | plugin/disredis | Redis lookup and DNS response construction |
 | cmd/dis-coredns | CoreDNS with disredis, bind, and errors plugins |
@@ -16,11 +16,11 @@ The unified launcher starts these components with Fabric:
 ~~~bash
 ./run.sh
 bin/dis-demo -url http://127.0.0.1:38080
-bin/dis-sync -fabric-config runtime/configured/fabric/gateway.json \
+bin/dis-sync \
   -redis 127.0.0.1:38679 -check -verify 127.0.0.1:38530
 ~~~
 
-These addresses belong to the default config.yaml. Change them for another deployment. The check command reads committed state, compares the Redis projection, and verifies both zones by TCP AXFR.
+These addresses belong to the default config.yaml. Change them for another deployment. The check command reads the persistent Redis projection and verifies both zones against it by TCP AXFR, without a Fabric connection. Use dis-audit for explicit comparison with committed history; see the [running guide](../../docs/runbook.md#audit-committed-history).
 
 ## Records and persistence
 

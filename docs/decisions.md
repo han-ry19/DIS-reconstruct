@@ -22,9 +22,9 @@ A newly signed authorization request writes a pending record at the data/recipie
 
 ## DNS publication
 
-The publisher reconstructs current state from committed blocks to a captured height, then consumes subsequent events. Redis transactions update DNS fields, cached business objects, and the recovery checkpoint together. Full-state digests are computed for snapshots and same-sequence verification; ordinary incremental publication writes the changed records and checkpoint without serializing the full state. CoreDNS reads the resulting zone hashes.
+The publisher resumes from its persistent Redis projection. If that projection is absent, it reconstructs current state from committed blocks to a captured height, then consumes subsequent events. Redis transactions update DNS fields, cached business objects, and the recovery checkpoint together. Full-state digests are computed for snapshots and same-sequence verification; ordinary incremental publication writes the changed records and checkpoint without serializing the full state. CoreDNS reads the resulting zone hashes.
 
-Identity records use CERT/TXT, data records RP/URI/TXT, and authorization records TXT. Ed25519 CERT type 254 carries an OID-length byte, the DER OID value for 1.3.101.112, and the raw key. Authorization TXT uses expired_at, matching the paper’s external record format; signed API requests and stored objects use expires_at. Profiles retain the first paper’s label, format, and description as registration metadata and are excluded from DNS. Complete AXFR verification compares authoritative records, including SOA serials, with the ledger projection.
+Identity records use CERT/TXT, data records RP/URI/TXT, and authorization records TXT. Ed25519 CERT type 254 carries an OID-length byte, the DER OID value for 1.3.101.112, and the raw key. Authorization TXT uses expired_at, matching the paper’s external record format; signed API requests and stored objects use expires_at. Profiles retain the first paper’s label, format, and description as registration metadata and are excluded from DNS. Serving verification compares authoritative records, including SOA serials, with the cached Redis projection. The separate dis-audit command compares this projection with state reconstructed from committed history.
 
 ## Completion and data consumption
 

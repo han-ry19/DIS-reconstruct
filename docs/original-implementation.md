@@ -14,9 +14,9 @@ The reconstruction uses a versioned Ed25519 request envelope, actor-scoped retry
 
 ## Event publication and DNS
 
-Successful management operations emit ZoneUpdate events. On a cold start, the publisher captures the channel height and replays valid committed DIS events through the preceding block. It constructs the business state in memory and publishes it atomically before following later events. The publisher applies these events to Redis zone hashes. Each field is a relative DNS name; its JSON value describes the record types, with @ representing the zone apex.
+Successful management operations emit ZoneUpdate events. When the persistent Redis projection is absent, the publisher captures the channel height and replays valid committed DIS events through the preceding block. It constructs the business state in memory and publishes it atomically before following later events. The publisher applies these events to Redis zone hashes. Each field is a relative DNS name; its JSON value describes the record types, with @ representing the zone apex.
 
-The reconstructed publisher adds atomic updates of DNS fields, cached objects, and a block/transaction checkpoint. It resumes from the saved checkpoint after reconnecting. Cold recovery uses the bounded block stream, while reconnection uses the persistent checkpoint. The consumer retains current business objects and a publication count, without a per-request history set. Cold replay requires access to blocks from channel creation and takes work proportional to that history. These mechanisms are implemented in cmd/dis-sync and internal/dns.
+The reconstructed publisher adds atomic updates of DNS fields, cached objects, and a block/transaction checkpoint. It resumes from the saved checkpoint after reconnecting. Empty-cache recovery uses the bounded block stream, while ordinary restarts and reconnection use the persistent checkpoint. The consumer retains current business objects and a publication count, without a per-request history set. Cold replay requires access to blocks from channel creation and takes work proportional to that history. These mechanisms are implemented in cmd/dis-sync and internal/dns.
 
 CoreDNS is built with plugin/disredis. Ordinary queries use HGET; AXFR uses HGETALL and splits large transfers into multiple DNS messages. The uid and data zones expose A, NS, SOA, CERT, RP, URI, and TXT records. SOA serials track the publication sequence. Zone-file export is available for inspection.
 
@@ -30,7 +30,7 @@ This release uses ledger schema 4: independent authorizations, indexed queries, 
 
 The reconstruction uses committed events to update Redis and serves queries through the Redis-backed CoreDNS plugin. *Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications* describes periodic retrieval by its CoreDNS plugin in Section 8 and Algorithm 9.
 
-Report the current implementation as the event-driven Redis path. Measure valid Fabric commit, commit-to-authoritative-DNS visibility, and authoritative query latency separately. Query throughput measures the serving path after publication; it does not measure synchronization delay. A periodic-retrieval variant would need its own implementation and explicit polling settings before comparison; changing the event reconnect interval does not reproduce Algorithm 9.
+Report the current implementation as the event-driven Redis path. Measure valid Fabric commit, commit-to-authoritative-DNS visibility, and authoritative query latency separately. Query throughput measures the serving path after publication; it does not measure synchronization delay. This reconstruction uses event-driven incremental publication. In Algorithm 9 (PDF page 21), a periodic check first detects changes, then traverses all current records of the affected identifier type to regenerate and transmit its record list. Section 8.1 (PDF page 30) places periodic retrieval in a CoreDNS plugin. The event reconnect interval controls reconnection only.
 
 ## Authorization concurrency
 

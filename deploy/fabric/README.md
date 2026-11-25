@@ -31,6 +31,6 @@ python3 scripts/network.py status
 
 Use ./run.sh down and ./run.sh to stop and restart the complete deployment. For manual operations, stop services before network nodes. The network manager controls recorded process identities and retains ledger data on shutdown.
 
-## Legacy ledger migration
+## Ledger schema
 
-For a deployment using the earlier single-document ledger layout, select its DIS_RUNTIME, stop services and network, build the current commands, then run python3 scripts/upgrade-ledger.py. The script advances the chaincode definition and converts the state while preserving identifiers and receipts. Start the complete deployment again after migration. See [source and storage design](../../docs/original-implementation.md).
+The current chaincode uses ledger schema 4, with independent authorization records and indexed queries. Use a fresh runtime directory when starting from an earlier schema; retain the earlier runtime separately. The launcher rejects a mismatched schema. See [ledger and DNS implementation](../../docs/original-implementation.md).
