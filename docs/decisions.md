@@ -10,7 +10,7 @@ The data owner decides application permissions. Fabric peers verify the signed o
 
 ## Ledger organization
 
-Fabric stores identities, data objects, pending authorizations, and receipts under composite keys. Decided authorizations are embedded in data objects, following the historical chaincode. Identifier mappings, owner and recipient associations, transaction information, and registration metadata support management queries.
+Fabric stores identities, data objects, pending authorizations, and receipts under composite keys. Decided authorizations are embedded in data objects, following the historical chaincode. Identifier mappings, owner and recipient associations, transaction information, and registration metadata support management queries. The object layout is an implementation choice; the DNS projection defines the externally resolved records. Performance reports should identify this layout and its write sets.
 
 Fresh ledgers identify successful transitions by transaction ID and actor-scoped receipts. Snapshots derive the publication sequence from committed receipts, keeping unrelated registrations' write sets independent. Existing ledgers retain their sequence format. MigrateState converts the earlier dis.state.v1 document to object records.
 
@@ -24,7 +24,7 @@ A newly signed authorization request writes a pending record at the data/owner/r
 
 The publisher loads a committed snapshot, then consumes committed events. Redis transactions update DNS fields, cached business objects, and the recovery checkpoint together. Full-state digests are computed for snapshots and same-sequence verification; ordinary incremental publication writes the changed records and checkpoint without serializing the full state. CoreDNS reads the resulting zone hashes.
 
-Identity records use CERT/TXT, data records RP/URI/TXT, and authorization records TXT. Ed25519 CERT type 254 carries an OID-length byte, the DER OID value for 1.3.101.112, and the raw key. Profiles remain registration metadata. Complete AXFR verification compares authoritative records, including SOA serials, with the ledger projection.
+Identity records use CERT/TXT, data records RP/URI/TXT, and authorization records TXT. Ed25519 CERT type 254 carries an OID-length byte, the DER OID value for 1.3.101.112, and the raw key. Authorization TXT uses expired_at, matching the paper’s external record format; signed API requests and stored objects use expires_at. Profiles retain the first paper’s label, format, and description as registration metadata and are excluded from DNS. Complete AXFR verification compares authoritative records, including SOA serials, with the ledger projection.
 
 ## Completion and data consumption
 

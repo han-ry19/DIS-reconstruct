@@ -109,11 +109,14 @@ func TestLiveFabricManagementUpdates(t *testing.T) {
 			if err != nil {
 				return false
 			}
-			var a domain.AuthorizationRecord
+			var a struct {
+				domain.AuthorizationRecord
+				ExpiredAt int64 `json:"expired_at"`
+			}
 			if json.Unmarshal([]byte(raw), &a) != nil {
 				return false
 			}
-			return a.Recipient == recipient && a.Status == status && len(a.Permissions) == permissions
+			return a.Recipient == recipient && a.Status == status && len(a.Permissions) == permissions && a.ExpiredAt > 0 && !strings.Contains(raw, "\"expires_at\"")
 		}
 	}
 	waitDNS(authName(appID), mdns.TypeTXT, authMatches(appID, domain.AuthorizationApproved, 1))

@@ -16,7 +16,7 @@ The architecture is shown in Figure 1 of the first paper and Figure 4 of the sec
 | Identifier System | Redis-backed CoreDNS | Resolve identity, data, and authorization records |
 | DIS-hub interface in the second paper | DIS API | Provide application-facing management and query endpoints |
 
-The first paper's implementation uses Orb/W3C DID for identity. The reconstruction uses the DNS identity model developed in the second paper. Metadata discovery belongs to the broader architecture; personal data storage and enforcement run in external data services.
+The first paper's implementation uses Orb/W3C DID for identity. The reconstruction uses the DNS identity model developed in the second paper. Registration metadata uses the first paper’s label, format, and description fields. These fields remain in the ledger and are excluded from DNS, following the second paper’s record projection. Metadata discovery belongs to the broader architecture; personal data storage and enforcement run in external data services.
 
 ## Original-text locations
 

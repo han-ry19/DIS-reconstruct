@@ -70,7 +70,16 @@ func Project(s domain.State) (map[string][]mdns.RR, error) {
 		if !IdentityName(a.Recipient) {
 			return nil, fmt.Errorf("invalid authorization recipient")
 		}
-		b, e := json.Marshal(a)
+		// Keep the DNS contract separate from the ledger and signed API schema.
+		b, e := json.Marshal(struct {
+			DataID      string                     `json:"data_id"`
+			OwnerID     string                     `json:"owner_id"`
+			Recipient   string                     `json:"recipient"`
+			Status      domain.AuthorizationStatus `json:"status"`
+			Permissions []string                   `json:"permissions"`
+			IssuedAt    int64                      `json:"issued_at"`
+			ExpiredAt   int64                      `json:"expired_at"`
+		}{a.DataID, a.OwnerID, a.Recipient, a.Status, a.Permissions, a.IssuedAt, a.ExpiresAt})
 		if e != nil {
 			return nil, e
 		}

@@ -1,6 +1,6 @@
 # Historical sources and reconstructed components
 
-The paper algorithms guide identity, data, and authorization management. The historical repositories supply the object-ledger organization and Redis-backed DNS implementation used in this reconstruction.
+The paper algorithms guide identity, data, and authorization management. The inspected historical repositories supply the object-ledger organization and Redis-backed DNS implementation used in this reconstruction. Their correspondence to the revisions used in the published experiments has not been established. The revision references below identify the inspected implementation sources; they do not identify the papers’ experimental artifacts.
 
 ## Inspected sources
 
