@@ -1,6 +1,6 @@
 # Deployment configuration
 
-The repository-root [config.yaml](../config.yaml) selects the runtime, Fabric topology, and service ports. After [installation](../docs/runbook.md), run from the repository root:
+The repository-root [config.yaml](../config.yaml) provides public example defaults for the runtime, Fabric topology, and service ports. Choose values appropriate for your machines. After [installation](../docs/runbook.md), run from the repository root:
 
 ~~~bash
 ./run.sh plan

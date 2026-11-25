@@ -8,9 +8,7 @@ The lightweight governance system is a separate project. Keep this repository fo
 
 ## Development execution
 
-For the current maintainer's agent sessions, run builds, tests, deployments, and experiments on SSH host 170. The checkout is /home/hanruoyu/DIS-reconstruct and belongs to hanruoyu. Local sessions may connect to that host and inspect files.
-
-These are maintainer environment instructions. Public usage guides should use repository-relative paths and portable commands.
+Run builds, tests, deployments, and experiments in the development environment selected by the maintainer. Use repository-relative paths in commands and documentation. Keep machine addresses, private deployment settings, credentials, and local working directories outside tracked files.
 
 ## Documentation
 

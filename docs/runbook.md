@@ -2,7 +2,7 @@
 
 ## Install and build
 
-Use Linux amd64 with Git, Go 1.23.4 or later, Python 3.9 or later with venv support, a C compiler, and make.
+Use Linux amd64 with Git, Go 1.23.4 or later, Python 3.9 or later with venv support, a C compiler, make, and curl.
 
 ~~~bash
 git clone https://github.com/han-ry19/DIS-reconstruct.git
@@ -42,14 +42,41 @@ The demo registers a user and application, registers data, requests Read access,
 
 ## Sign and submit a request
 
+This example registers a new user identity with the default deployment. Run it from the repository root. It creates a fresh identity name, request ID, and timestamp on each run and stores local files under runtime/client-example.
+
 ~~~bash
-bin/dis-cli keygen -out identity.key
-bin/dis-cli sign -key identity.key -request request.json > signed-request.json
-curl --fail-with-body -H 'Content-Type: application/json' \
-  --data-binary @signed-request.json http://127.0.0.1:38080/v1/transactions
+mkdir -p runtime/client-example
+example_dir=$(mktemp -d "$PWD/runtime/client-example/user.XXXXXX")
+bin/dis-cli keygen -out "$example_dir/identity.key" > "$example_dir/public-key.txt"
+python3 - "$example_dir" <<'PY'
+import json
+from pathlib import Path
+import sys
+import time
+import uuid
+
+folder = Path(sys.argv[1])
+identity = "user-" + uuid.uuid4().hex + ".uid"
+request = {
+    "domain": "dis-local",
+    "operation": "identity.register",
+    "actor": identity,
+    "request_id": uuid.uuid4().hex,
+    "timestamp": int(time.time()),
+    "parameters": {
+        "identity_id": identity,
+        "public_key": (folder / "public-key.txt").read_text().strip(),
+        "kind": "user",
+    },
+}
+(folder / "request.json").write_text(json.dumps(request))
+print("Registering", identity)
+PY
+bin/dis-cli sign -key "$example_dir/identity.key"   -request "$example_dir/request.json" > "$example_dir/signed-request.json"
+curl --fail-with-body -H 'Content-Type: application/json'   --data-binary @"$example_dir/signed-request.json"   http://127.0.0.1:38080/v1/transactions
 ~~~
 
-The key generator prints the public key and writes a private key with owner-only permissions. Request fields are defined in the [API schema](../api/openapi.yaml). The request domain must match the deployment. Use a fresh request ID and current timestamp. Exact retries return the original result; changed content with the same actor/request ID is rejected. See [management operations](management-updates.md) for update examples.
+A successful response contains the request ID, operation, object ID, and committed result. Keep the generated private key for subsequent requests by this identity. Change the domain and API address when using another deployment. The [API schema](../api/openapi.yaml) defines request fields; [management operations](management-updates.md) provides update parameters. Exact retries return the original result; changed content with the same actor/request ID is rejected.
 
 ## Stop and restart
 

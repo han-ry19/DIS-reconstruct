@@ -34,7 +34,7 @@ Fabric peer, orderer, and chaincode processes can run on one or multiple machine
 
 ## Install and build
 
-Use a Linux amd64 machine with Git, Go 1.23.4 or later, Python 3.9 or later with venv support, a C compiler, and make. Multi-machine deployment also requires rsync and noninteractive SSH access from the controller to workers.
+Use a Linux amd64 machine with Git, Go 1.23.4 or later, Python 3.9 or later with venv support, a C compiler, make, and curl. Multi-machine deployment also requires rsync and noninteractive SSH access from the controller to workers.
 
 ~~~bash
 git clone https://github.com/han-ry19/DIS-reconstruct.git
@@ -50,7 +50,7 @@ The bootstrap script installs Fabric 2.4.9, CoreDNS 1.12.0 release assets, and R
 
 ## Run on one machine
 
-The repository-root [config.yaml](config.yaml) selects the runtime directory, network topology, Gateway concurrency, and service ports. After building, run:
+The repository-root [config.yaml](config.yaml) provides public example defaults for the runtime directory, network topology, Gateway concurrency, and service ports. Adjust these values for your deployment. After building, run:
 
 ~~~bash
 ./run.sh plan     # Validate and print the configuration without starting processes
@@ -81,7 +81,7 @@ Certificates, ledger data, publication state, and logs are retained under runtim
 
 Peer nodes, Raft orderers, and their associated chaincode processes can run on different machines. The API, event publisher, Redis, and CoreDNS run on the controller. The controller transfers node binaries, certificates, and configuration over SSH and manages the remote processes.
 
-Each worker needs Linux amd64, Python 3, rsync, and a writable dedicated runtime directory. The controller must have noninteractive SSH access to workers. Advertised peer and orderer addresses and their assigned ports must be reachable by the controller and other nodes.
+Each worker needs Linux amd64, Python 3, rsync, and a writable dedicated runtime directory. The hostnames, SSH account, and /srv/dis/two-host path below are examples to replace for your deployment. The controller must have noninteractive SSH access to workers. Advertised peer and orderer addresses and their assigned ports must be reachable by the controller and other nodes.
 
 Save the following as config/two-host.yaml, replacing the example addresses, SSH account, and worker directory with your own:
 
@@ -103,7 +103,7 @@ network:
     worker:
       address: worker.example.org
       ssh: experiment@worker.example.org
-      root: /home/experiment/dis-runs/two-host
+      root: /srv/dis/two-host
   placement:
     peers: [controller, worker, worker]
     orderers: [controller, worker, controller]
