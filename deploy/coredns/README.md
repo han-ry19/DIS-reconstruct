@@ -28,6 +28,19 @@ Redis stores zones in the uid. and data. hashes. Fields are relative names, with
 
 Ordinary queries use HGET; complete-zone transfer uses HGETALL. Redis AOF persistence retains published records. Record changes, cached business objects, and event checkpoints are written in the same Redis transaction. The publisher reconnects using the saved event position.
 
+## Zone-transfer access
+
+AXFR accepts loopback TCP clients by default. A manually managed Corefile can use transfer_allow inside disredis to list permitted IP addresses or CIDR ranges, for example:
+
+~~~text
+disredis {
+  address 127.0.0.1:38679
+  transfer_allow 127.0.0.1/32 ::1/128 192.0.2.0/24
+}
+~~~
+
+Replace the documentation network with the intended replica network. transfer_allow none disables zone transfer. Keep loopback access enabled when running the supplied AXFR verification commands. The unified launcher generates its Corefile from the deployment settings; manage a separate Corefile when customizing plugin options.
+
 ## Zone-file export
 
 ~~~bash

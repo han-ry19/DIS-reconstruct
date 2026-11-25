@@ -137,6 +137,80 @@ func persistSourceIndexes(stub shim.ChaincodeStubInterface, s domain.State, r do
 }
 
 func indexedData(stub shim.ChaincodeStubInterface, m metadata, actor, kind string) ([]domain.DataIdentifier, error) {
+	var identity domain.Identity
+	exists, err := read(stub, identityKind, &identity, actor)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, domain.ErrNotFound
+	}
+	actorIndex, err := rawIndex(stub, doiToIndexKind, actor)
+	if err != nil {
+		return nil, err
+	}
+	// Fresh ledgers maintain complete associations from initialization.
+	// Earlier ledgers retain snapshot queries to include unindexed objects.
+	if !m.IndexedQueries || actorIndex == "" {
+		return legacyIndexedData(stub, m, actor, kind)
+	}
+	ts, err := stub.GetTxTimestamp()
+	if err != nil {
+		return nil, err
+	}
+	it, err := stub.GetStateByPartialCompositeKey(kind, []string{actorIndex})
+	if err != nil {
+		return nil, err
+	}
+	defer it.Close()
+	out := []domain.DataIdentifier{}
+	seen := map[string]bool{}
+	for it.HasNext() {
+		entry, err := it.Next()
+		if err != nil {
+			return nil, err
+		}
+		id, err := rawIndex(stub, indexToDOIKind, string(entry.Value))
+		if err != nil {
+			return nil, err
+		}
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		d, exists, err := object(stub, id)
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
+			continue
+		}
+		allowed := d.Data.OwnerID == actor
+		if !allowed && kind == authorizedIndexKind {
+			for _, a := range d.Authorizations {
+				if a.Recipient != actor || a.Status != domain.AuthorizationApproved || a.ExpiresAt <= ts.Seconds {
+					continue
+				}
+				var pending domain.AuthorizationRecord
+				overlaid, err := read(stub, pendingKind, &pending, a.DataID, a.OwnerID, a.Recipient)
+				if err != nil {
+					return nil, err
+				}
+				if !overlaid {
+					allowed = true
+					break
+				}
+			}
+		}
+		if allowed {
+			out = append(out, d.Data)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out, nil
+}
+
+func legacyIndexedData(stub shim.ChaincodeStubInterface, m metadata, actor, kind string) ([]domain.DataIdentifier, error) {
 	// A snapshot fallback keeps pre-index ledgers readable; all returned associations
 	// are checked against business records (including revocation and expiration).
 	s, e := snapshot(stub, m)

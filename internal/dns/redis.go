@@ -200,7 +200,17 @@ func SaveProjection(address string, p ProjectionCheckpoint, full bool) error {
 		if old.State.Sequence == p.State.Sequence {
 			expected := old.Digest
 			if expected == "" {
-				expected, _ = Digest(old.State)
+				recovered, ok, err := LoadProjection(address)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					return fmt.Errorf("projection disappeared during publication")
+				}
+				expected, err = Digest(recovered.State)
+				if err != nil {
+					return err
+				}
 			}
 			actual, _ := Digest(p.State)
 			if expected != actual {
@@ -230,9 +240,14 @@ func SaveProjection(address string, p ProjectionCheckpoint, full bool) error {
 	if e != nil {
 		return e
 	}
-	p.Digest, e = Digest(p.State)
-	if e != nil {
-		return e
+	// Compute a full-state digest for snapshots and same-state checks only.
+	// Incremental commits are coupled to their object writes by Redis WATCH/MULTI.
+	p.Digest = ""
+	if full || p.Change == nil {
+		p.Digest, e = Digest(p.State)
+		if e != nil {
+			return e
+		}
 	}
 	metadata := p
 	metadata.State = domain.State{Domain: p.State.Domain, Sequence: p.State.Sequence, ReceiptSequence: p.State.ReceiptSequence}

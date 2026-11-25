@@ -29,7 +29,7 @@ def main():
     output.mkdir(parents=True)
     source = output/'source'
     source.mkdir()
-    for relative in ['benchmarks/caliper/register.js', 'benchmarks/caliper/package.json', 'scripts/benchmark-caliper.py', 'scripts/caliper_results.py']:
+    for relative in ['benchmarks/caliper/register.js', 'benchmarks/caliper/signing.js', 'benchmarks/caliper/package.json', 'scripts/benchmark-caliper.py', 'scripts/caliper_results.py']:
         target = source/relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ROOT/relative, target)

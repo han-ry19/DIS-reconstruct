@@ -69,6 +69,9 @@ func Apply(s *State, r Request, now int64) (Result, error) {
 		return fail(ErrInvalid)
 	}
 	p := r.Parameters
+	if err := validateParameterSizes(p); err != nil {
+		return fail(err)
+	}
 	var pub ed25519.PublicKey
 	var err error
 	if r.Operation == "identity.register" {

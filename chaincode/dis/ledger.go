@@ -18,6 +18,7 @@ const pendingKind = "AuthorizationUnconfirmed"
 const receiptKind = "RequestReceipt"
 
 type metadata struct {
+	IndexedQueries  bool
 	ReceiptSequence bool
 	Domain          string
 	Sequence        uint64

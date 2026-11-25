@@ -21,7 +21,7 @@ func updateData(s *State, r Request) (string, error) {
 	switch p.Field {
 	case "URI":
 		u, err := url.Parse(p.NewContent)
-		if err != nil || u.Scheme == "" || u.Host == "" || u.User != nil {
+		if len(p.NewContent) > MaxAddressBytes || err != nil || u.Scheme == "" || u.Host == "" || u.User != nil {
 			return "", ErrInvalid
 		}
 		d.Address = p.NewContent

@@ -25,7 +25,7 @@ func (c *Contract) Init(stub shim.ChaincodeStubInterface) pb.Response {
 			return shim.Error("already initialized")
 		}
 	}
-	if e := putMetadata(stub, metadata{Domain: args[0], ReceiptSequence: true}); e != nil {
+	if e := putMetadata(stub, metadata{Domain: args[0], ReceiptSequence: true, IndexedQueries: true}); e != nil {
 		return shim.Error(e.Error())
 	}
 	return shim.Success(nil)

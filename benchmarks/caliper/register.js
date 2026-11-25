@@ -4,13 +4,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
-// Property order matches internal/domain.Request and its typed parameters.
-function signedRequest(domain, operation, actor, requestID, parameters, key) {
-    const request = { domain, operation, actor, request_id: requestID,
-        timestamp: Math.floor(Date.now() / 1000), parameters, signature: '' };
-    request.signature = crypto.sign(null, Buffer.from('DIS-request-v1\n' + JSON.stringify(request)), key).toString('base64');
-    return JSON.stringify(request);
-}
+const { signedRequest } = require('./signing');
 
 class RegistrationWorkload extends WorkloadModuleBase {
     async initializeWorkloadModule(...args) {

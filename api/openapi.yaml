@@ -4,7 +4,7 @@ info:
   version: 0.3.0
   description: Signed DIS operations through Fabric or the development file backend.
 servers:
-  - url: http://localhost:28080
+  - url: http://localhost:38080
     description: Managed Fabric deployment
   - url: http://localhost:8080
     description: Direct API process
@@ -33,7 +33,7 @@ paths:
         '404':
           description: Referenced record does not exist
         '409':
-          description: Conflicting identifier or request ID
+          description: Conflicting identifier, request ID, or concurrent ledger update
   /v1/identities/{id}:
     get:
       parameters:
@@ -94,15 +94,15 @@ components:
             public_key: {type: string, description: Base64 Ed25519 public key}
             kind: {type: string, enum: [user, application]}
             data_id: {type: string}
-            address: {type: string}
+            address: {type: string, description: Absolute address with at most 1024 UTF-8 bytes}
             data_signature: {type: string}
             profile:
               type: object
               additionalProperties: false
               properties:
-                label: {type: string}
-                format: {type: string}
-                description: {type: string}
+                label: {type: string, description: At most 256 UTF-8 bytes}
+                format: {type: string, description: At most 128 UTF-8 bytes}
+                description: {type: string, description: At most 4096 UTF-8 bytes}
             recipient: {type: string}
             permissions:
               type: array

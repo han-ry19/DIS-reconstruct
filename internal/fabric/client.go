@@ -9,6 +9,7 @@ import (
 	"github.com/hyperledger/fabric-gateway/pkg/client"
 	"github.com/hyperledger/fabric-gateway/pkg/identity"
 	gateway "github.com/hyperledger/fabric-protos-go-apiv2/gateway"
+	peer "github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
@@ -112,6 +113,10 @@ func (b *Backend) View() (domain.State, error) {
 	return state, e
 }
 func classify(e error) error {
+	var commit *client.CommitError
+	if errors.As(e, &commit) && (commit.Code == peer.TxValidationCode_MVCC_READ_CONFLICT || commit.Code == peer.TxValidationCode_PHANTOM_READ_CONFLICT) {
+		return fmt.Errorf("%w: transaction %s must be resubmitted after a ledger conflict", domain.ErrConflict, commit.TransactionID)
+	}
 	var endorsement *client.EndorseError
 	if !errors.As(e, &endorsement) {
 		return e

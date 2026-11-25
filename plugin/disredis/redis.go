@@ -16,14 +16,16 @@ import (
 )
 
 type Handler struct {
-	Next  plugin.Handler
-	Pool  *redis.Pool
-	Zones []string
+	Next             plugin.Handler
+	Pool             *redis.Pool
+	Zones            []string
+	TransferNetworks []*net.IPNet
 }
 
 func init() { plugin.Register("disredis", setup) }
 func setup(c *caddy.Controller) error {
 	address := "127.0.0.1:28679"
+	var transferNetworks []*net.IPNet
 	for c.Next() {
 		for c.NextBlock() {
 			switch c.Val() {
@@ -32,12 +34,38 @@ func setup(c *caddy.Controller) error {
 					return c.ArgErr()
 				}
 				address = c.Val()
+			case "transfer_allow":
+				values := c.RemainingArgs()
+				if len(values) == 0 {
+					return c.ArgErr()
+				}
+				transferNetworks = []*net.IPNet{}
+				for _, value := range values {
+					if value == "none" {
+						if len(values) != 1 {
+							return c.Errf("none must be used alone")
+						}
+						continue
+					}
+					if ip := net.ParseIP(value); ip != nil {
+						if ip.To4() != nil {
+							value += "/32"
+						} else {
+							value += "/128"
+						}
+					}
+					_, network, err := net.ParseCIDR(value)
+					if err != nil {
+						return c.Errf("invalid transfer_allow network %s", value)
+					}
+					transferNetworks = append(transferNetworks, network)
+				}
 			default:
 				return c.Errf("unknown property %s", c.Val())
 			}
 		}
 	}
-	h := &Handler{Zones: []string{"uid.", "data."}}
+	h := &Handler{Zones: []string{"uid.", "data."}, TransferNetworks: transferNetworks}
 	h.Pool = &redis.Pool{MaxIdle: 4, MaxActive: 64, Wait: true, Dial: func() (redis.Conn, error) {
 		return redis.Dial("tcp", address, redis.DialConnectTimeout(2*time.Second), redis.DialReadTimeout(5*time.Second), redis.DialWriteTimeout(5*time.Second))
 	}}
@@ -57,6 +85,23 @@ func (h *Handler) records(c redis.Conn, zone, label string) ([]mdns.RR, error) {
 	}
 	return decode(name, b)
 }
+
+// Zone transfers are local by default; explicit CIDRs enable remote replicas.
+func (h *Handler) transferAllowed(address net.Addr) bool {
+	tcp, ok := address.(*net.TCPAddr)
+	if !ok {
+		return false
+	}
+	if h.TransferNetworks == nil {
+		return tcp.IP.IsLoopback()
+	}
+	for _, network := range h.TransferNetworks {
+		if network.Contains(tcp.IP) {
+			return true
+		}
+	}
+	return false
+}
 func (h *Handler) ServeDNS(ctx context.Context, w mdns.ResponseWriter, r *mdns.Msg) (int, error) {
 	if len(r.Question) != 1 {
 		return mdns.RcodeFormatError, nil
@@ -66,6 +111,9 @@ func (h *Handler) ServeDNS(ctx context.Context, w mdns.ResponseWriter, r *mdns.M
 	zone := plugin.Zones(h.Zones).Matches(name)
 	if zone == "" {
 		return plugin.NextOrFailure(h.Name(), h.Next, ctx, w, r)
+	}
+	if q.Qtype == mdns.TypeAXFR && !h.transferAllowed(w.RemoteAddr()) {
+		return mdns.RcodeRefused, nil
 	}
 	c := h.Pool.Get()
 	defer c.Close()

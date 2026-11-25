@@ -2,7 +2,7 @@
 
 ## Signed requests and deterministic execution
 
-Ed25519 signatures bind the deployment domain, operation, actor, request ID, timestamp, and typed parameters. SigningBytes in internal/domain defines the encoding. Clients supply unique data names under .data, bound to the signed request, so every endorsing peer validates the same input.
+Ed25519 signatures bind the deployment domain, operation, actor, request ID, timestamp, and typed parameters. SigningBytes in internal/domain defines the encoding. The JavaScript implementation in benchmarks/caliper/signing.js uses the same field order, omitted values, and JSON escaping; cross-language tests compare the resulting bytes. Clients supply unique data names under .data, bound to the signed request, so every endorsing peer validates the same input.
 
 Request IDs are scoped to their actor. An exact retry returns the recorded result; changed content with the same ID is rejected. New requests must fall within five minutes of the execution timestamp. The Fabric adapter uses GetTxTimestamp; the file backend uses its execution clock.
 
@@ -22,7 +22,7 @@ A newly signed authorization request writes a pending record at the data/owner/r
 
 ## DNS publication
 
-The publisher loads a committed snapshot, then consumes committed events. Redis transactions update DNS fields, cached business objects, and the recovery checkpoint together. CoreDNS reads the resulting zone hashes.
+The publisher loads a committed snapshot, then consumes committed events. Redis transactions update DNS fields, cached business objects, and the recovery checkpoint together. Full-state digests are computed for snapshots and same-sequence verification; ordinary incremental publication writes the changed records and checkpoint without serializing the full state. CoreDNS reads the resulting zone hashes.
 
 Identity records use CERT/TXT, data records RP/URI/TXT, and authorization records TXT. Ed25519 CERT type 254 carries an OID-length byte, the DER OID value for 1.3.101.112, and the raw key. Profiles remain registration metadata. Complete AXFR verification compares authoritative records, including SOA serials, with the ledger projection.
 

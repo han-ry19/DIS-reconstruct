@@ -43,6 +43,10 @@ The parameters for reducing permissions are:
 
 Put these parameters in a request with operation data.update or authorization.update, the deployment domain, current owner as actor, a fresh request_id, and the current Unix timestamp. Sign the complete request using dis-cli sign and submit it as described in the [running guide](runbook.md). The [OpenAPI schema](../api/openapi.yaml) defines the envelope.
 
+## Input limits
+
+Limits are measured in UTF-8 bytes. Addresses accept up to 1024 bytes for both registration and URI updates. Profile label, format, and description accept up to 256, 128, and 4096 bytes. Oversized fields are rejected before state changes. The address bound fits the URI encoder used by the pinned DNS library.
+
 ## Ownership and recipient changes
 
 An RP update changes the data owner and preserves existing authorization records, consistent with Algorithm 7's single-field update. The former owner cannot make subsequent changes. The new owner can manage an existing grant by naming its original authorization_owner. This parameter selects the issuer in the data/issuer/recipient storage key.
@@ -65,7 +69,7 @@ The [historical chaincode revision 63c85ef](https://github.com/fuxi-inc/dip-dis-
 
 The internal index follows the historical Base64(transaction ID + identifier) construction. New registrations write mappings, associations, transaction information, and the profile's registration metadata. Updates move affected associations and retain creation time while recording the new transaction ID and timestamp. The reconstruction stores these keys alongside its business objects and represents timestamps as Unix seconds.
 
-The contract exposes TransDOIToIndex, TransIndexToDOI, GetTransactionInfo, GetOwnedData, and GetAuthorizedData, each taking one identifier (TransIndexToDOI takes an internal index). The list queries validate authoritative business records, with approved status and unexpired authorization required for recipient access. Currently the list queries scan the business snapshot, keeping pre-index ledgers readable. Existing ledgers acquire auxiliary records as their objects are written.
+The contract exposes TransDOIToIndex, TransIndexToDOI, GetTransactionInfo, GetOwnedData, and GetAuthorizedData, each taking one identifier (TransIndexToDOI takes an internal index). The list queries validate authoritative business records, with approved status and unexpired authorization required for recipient access. Fresh deployments query the owner's or recipient's association index and validate each referenced business record, including pending overlays and expiration. Earlier deployments retain the snapshot lookup to include records created before index maintenance; a fresh runtime enables the indexed path.
 
 ## Event publication
 

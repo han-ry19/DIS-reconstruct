@@ -186,7 +186,7 @@ func follow(b *fabric.Backend, view func() (domain.State, error), address, outpu
 					if readErr != nil {
 						return readErr
 					}
-					if s.Sequence < change.Sequence {
+					if !snapshotCoversChange(s, change) {
 						return fmt.Errorf("snapshot behind event")
 					}
 					p.State = s
@@ -213,4 +213,11 @@ func follow(b *fabric.Backend, view func() (domain.State, error), address, outpu
 		log.Printf("published event sequence %d block %d transaction %s", p.State.Sequence, p.Block, p.Transaction)
 	}
 	return fmt.Errorf("event stream closed")
+}
+
+func snapshotCoversChange(s domain.State, change domain.Change) bool {
+	if change.RequestKey != "" {
+		return s.AppliedRequests[change.RequestKey]
+	}
+	return s.Sequence >= change.Sequence
 }
