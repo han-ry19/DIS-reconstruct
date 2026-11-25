@@ -1,6 +1,6 @@
 # DIS-reconstruct
 
-This project reconstructs the DNS identifier registration, management, authorization, and resolution components described in [Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership](https://ieeexplore.ieee.org/document/10197025) and [Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications](https://link.springer.com/article/10.1007/s11280-025-01337-z), following the papers and their source code.
+This project reconstructs the DNS identifier registration, management, authorization, and resolution components described in Figure 1 of [Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership](https://ieeexplore.ieee.org/document/10197025) and [Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications](https://link.springer.com/article/10.1007/s11280-025-01337-z), following the papers and their source code.
 
 ## System design
 
@@ -10,7 +10,7 @@ The two source papers describe Data Interoperating Architecture (DIA), in which 
 
 ![DIA conceptual architecture with the reconstructed components highlighted](docs/images/dia-scope.svg)
 
-**Figure attribution:** This schematic is redrawn with reference to the original DIA architecture figure in [Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership](https://ieeexplore.ieee.org/document/10197025) and Figure 4 of [Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications](https://link.springer.com/article/10.1007/s11280-025-01337-z). The layout is simplified, and colors identify the components covered by this reconstruction.
+**Figure attribution:** This schematic is redrawn with reference to the original DIA architecture figure in Figure 1 of [Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership](https://ieeexplore.ieee.org/document/10197025) and Figure 4 of [Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications](https://link.springer.com/article/10.1007/s11280-025-01337-z). The layout is simplified, and colors identify the components covered by this reconstruction.
 
 DIS-reconstruct implements the identity, data, and authorization management components and their connection to identifier resolution, highlighted in green. Metadata discovery and reverse lookup are outside the current reconstruction. Personal data storage and access control remain external services.
 
