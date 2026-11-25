@@ -4,23 +4,33 @@ This project reconstructs the DNS identifier registration, management, authoriza
 
 ## System design
 
-The reconstruction covers the following capabilities:
+### Source architecture and reconstruction scope
 
-| Capability | Purpose |
+The two source papers describe Data Interoperating Architecture (DIA), in which the Data Interoperating System (DIS) connects blockchain-based management, an identifier system, and a data discovery service. End users manage their data and authorizations; applications use these services to locate and access data held in personal data stores.
+
+![DIA conceptual architecture with the reconstructed components highlighted](docs/images/dia-scope.svg)
+
+This simplified conceptual drawing is based on the architecture described in [Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership](https://ieeexplore.ieee.org/document/10197025) and Figure 4 of [Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications](https://link.springer.com/article/10.1007/s11280-025-01337-z). It uses a new layout and is not a reproduction of the published figure.
+
+DIS-reconstruct implements the identity, data, and authorization management components and their connection to identifier resolution, highlighted in green. Metadata discovery and reverse lookup are outside the current reconstruction. Personal data storage and access control remain external services.
+
+### Reconstructed implementation
+
+![DIS-reconstruct components and request, publication, and query paths](docs/images/implementation.svg)
+
+| Source component | Implementation in this repository |
 |---|---|
-| Identity registration and lookup | Bind a user or application identity to its public key |
-| Data registration | Bind a data identifier to its owner, address, signature, and profile |
-| Data updates | Change the address, data signature, or current owner |
-| Data resolution | Retrieve the attributes associated with a data identifier |
-| Authorization requests | Record an application's requested permissions and expiration time |
-| Owner decisions | Approve or reject a pending request |
-| Authorization updates | Change status, permissions, recipient, or expiration |
-| Authorization resolution | Retrieve authorization status, permissions, and expiration |
-| DNS publication | Publish committed identifier and authorization records through CoreDNS |
+| Identity Management | Fabric contracts register user and application identifiers with public keys and verify signed management requests. |
+| Data Management | Fabric contracts register data identifiers and update their owner, address, and submitted data signature. Registration profiles are stored as metadata. |
+| Authorization Management | Fabric contracts record application requests, owner decisions, and changes to authorization status, permissions, recipients, and expiration. |
+| Update Identifier | The synchronization service initializes from a committed snapshot and applies committed Fabric events to Redis with a recovery checkpoint. |
+| Identifier System | CoreDNS with the disredis plugin returns public keys, data attributes, and authorization records that consumers use for resolution, authentication, and authorization checks. |
 
-Deployment topology is configurable for experiments with different organization, peer, orderer, and machine counts. See the [experiment deployment guide](docs/experiment-deployment.md).
+Users and applications sign management requests and submit them through the DIS API. Fabric contracts check signatures, ownership, and operation conditions; Fabric validates endorsements and commits transactions. The synchronization service publishes the resulting records to Redis, and CoreDNS answers identifier queries. A successful ledger commit and a DNS-visible update are separate completion points.
 
-Users and applications submit requests through the DIS API. Fabric contracts validate and record management operations. A synchronization service applies committed chaincode events to Redis records served by a CoreDNS plugin. Original data remains in external data services.
+External data services retain the original payloads and perform requester authentication and access control using the relevant records. The reconstruction publishes these records; it does not implement the external data service.
+
+Fabric peer, orderer, and chaincode processes can run on one or multiple machines. The API, synchronization service, Redis, and CoreDNS currently run on the controller. See the [experiment deployment guide](docs/experiment-deployment.md) for configurable organization counts and node placement.
 
 ## Install and build
 
