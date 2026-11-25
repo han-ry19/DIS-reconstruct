@@ -1,40 +1,35 @@
-# Original implementation and reconstruction
+# Historical sources and reconstructed components
 
-This project reconstructs the DNS identifier registration, management, authorization, and resolution components described in Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership and Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications, following the papers and their source code.
+The paper algorithms guide identity, data, and authorization management. The historical repositories supply the object-ledger organization and Redis-backed DNS implementation used in this reconstruction.
 
-## Source references
+## Inspected sources
 
-| Repository | Inspected revision | Evidence |
-|---|---|---|
-| fuxi-inc/dip-dis-service | ad0b20b, 2024-02-28 | Fabric startup, signed API requests, transaction submission, startup zone loading, and event callbacks |
-| fuxi-inc/dip-dis-service | a38fa32, 2024-07-10 | Paged full-zone loading into a temporary Redis key and replacement of the public zone |
-| fuxi-inc/dip-dis-chaincode | 63c85ef, 2024-03-22 | Contract methods, composite keys, embedded confirmed authorizations, and DNS update events |
-| fuxi-inc/dip-dis-chaincode | e795f6d, 2024-07-03, branch v2.3.1-zwy-fullupdatepartition | GetZoneRedisPagination |
-| fuxi-inc/dis-coredns | df7d651, 2024-04-29, plugin/redis | Redis hash and JSON record representation, per-query HGET, and DNS response construction |
+| Repository and revision | Source mechanisms |
+|---|---|
+| [fuxi-inc/dip-dis-service, ad0b20b](https://github.com/fuxi-inc/dip-dis-service/tree/ad0b20b), February 28, 2024 | Fabric startup, signed API requests, transaction submission, full-zone loading, event callbacks |
+| [fuxi-inc/dip-dis-service, a38fa32](https://github.com/fuxi-inc/dip-dis-service/tree/a38fa32), July 10, 2024 | Paged loading into a temporary Redis key and replacement of the published zone |
+| [fuxi-inc/dip-dis-chaincode, 63c85ef](https://github.com/fuxi-inc/dip-dis-chaincode/tree/63c85ef), March 22, 2024 | Contracts, composite keys, embedded decided authorizations, DNS update events |
+| [fuxi-inc/dip-dis-chaincode, e795f6d](https://github.com/fuxi-inc/dip-dis-chaincode/tree/e795f6d), July 3, 2024 | GetZoneRedisPagination on branch v2.3.1-zwy-fullupdatepartition |
+| [fuxi-inc/dis-coredns, df7d651](https://github.com/fuxi-inc/dis-coredns/tree/df7d651), April 29, 2024 | Redis zone hashes, JSON record values, per-query HGET, DNS answers |
 
-## Recovered mechanisms
+## Ledger and management
 
-- Fabric composite keys separate identities, data objects, pending authorization requests, and request receipts.
-- Confirmed and rejected authorization records are embedded in their data object. A decision reads and rewrites that object, preserving the original implementation's object-level update dependency.
-- Successful management transitions emit a ZoneUpdate event. The publisher receives committed events, applies business deltas, and changes the corresponding Redis DNS fields.
-- Redis stores each authoritative zone as a hash: the key is the zone name, the field is the relative DNS label, and the value is JSON describing its record types. The apex uses @.
-- CoreDNS 1.12.0 is built with the disredis plugin, which performs HGET for ordinary queries and HGETALL for complete AXFR verification.
-- Startup performs a full committed-state load. Redis record updates and the event checkpoint are committed together. Reconnection resumes after the saved block and transaction; a sequence gap triggers full recovery.
+The reconstruction retains the historical separation of data objects and pending authorization requests. Decided authorizations are embedded in the data object, so an owner decision reads and updates that object. Auxiliary key families provide identifier mappings, owner and recipient associations, transaction information, and registration metadata.
 
-## Component design
+The signed API implements identity.register, data.register, data.update, authorization.request, authorization.decide, and authorization.update. Data and authorization updates follow the paper algorithms documented in [management operations](management-updates.md).
 
-The signed API exposes identity.register, data.register, authorization.request, and authorization.decide. Ed25519 signatures authenticate requests, and authorization records progress through pending, approved, or rejected states.
+The reconstruction uses a versioned Ed25519 request envelope, actor-scoped retry receipts, and its current business-object schema. Fresh registrations write their own object and receipt records. Snapshots derive the publication sequence from committed receipts.
 
-Management transactions update the affected object records and actor-scoped request receipts. Fresh ledgers return a Fabric transaction ID and leave common metadata unchanged, so unrelated registrations have independent write sets. A snapshot derives the publication sequence from committed receipts; the publisher increments that sequence for each distinct committed event in Fabric order. Existing ledgers continue to use their stored sequence format.
+## Event publication and DNS
 
-The publisher holds the projection in memory, computes a complete-state digest, and writes changed object and DNS fields to Redis. GetSnapshot provides full recovery, and -once exports zone files.
+Following the historical implementation, startup loads the committed state and successful management operations emit ZoneUpdate events. The publisher applies these events to Redis zone hashes. Each field is a relative DNS name; its JSON value describes the record types, with @ representing the zone apex.
 
-The CoreDNS plugin serves the uid and data zones with A, NS, SOA, CERT, RP, URI, and TXT records. The SOA serial follows the business sequence, and large AXFR responses span multiple DNS messages.
+The reconstructed publisher adds atomic updates of DNS fields, cached objects, and a block/transaction checkpoint. It resumes from the saved checkpoint after reconnecting. Full snapshots support initialization and recovery. These mechanisms are implemented in cmd/dis-sync and internal/dns.
 
-The default deployment runs four peer organizations with a three-organization endorsement threshold and four Raft orderers. Topology files configure other scales and machine placements.
+CoreDNS is built with plugin/disredis. Ordinary queries use HGET; AXFR uses HGETALL and splits large transfers into multiple DNS messages. The uid and data zones expose A, NS, SOA, CERT, RP, URI, and TXT records. SOA serials track the publication sequence. Zone-file export is available for inspection.
 
-## In-place migration
+## Deployment and migration
 
-For an existing v1 deployment, stop the managed services and network, build the new commands, and run scripts/upgrade-ledger.py. The script starts the existing network, advances the chaincode definition sequence, and submits MigrateState. Migration creates object and receipt keys, removes the legacy state document, and preserves identifiers and historical results. The migration is idempotent.
+[config.yaml](../config.yaml) selects organization counts, peer replicas, Raft orderers, endorsement, and machine placement. The API, publisher, Redis, and CoreDNS run on the controller.
 
-The upgrade script saves the previous runtime/dns/status.json under runtime/reconstruction-backup before the first publication with the new digest format. The new publication digest excludes transaction receipts. Existing runtime records and certificates remain on the host. Fresh deployments start directly with the object layout.
+For an earlier single-document deployment, stop its services and network, build the current commands, select its DIS_RUNTIME, and run scripts/upgrade-ledger.py. The script advances the chaincode definition and invokes MigrateState to preserve identifiers and receipts while converting the ledger. Migration is idempotent. The script saves the prior dns/status.json under reconstruction-backup before publication with the current digest format. Fresh deployments start with the object layout.

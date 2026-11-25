@@ -1,21 +1,32 @@
 # Operational scripts
 
-Run scripts from the repository root. The [running guide](../docs/runbook.md) gives installation and interactive commands.
+Use ./run.sh with [config.yaml](../config.yaml) for routine startup, status, and shutdown. The underlying scripts support component management, verification, and experiments.
 
 | Script | Purpose |
 |---|---|
-| dis.py | Plan, start, inspect, and stop a deployment using config.yaml |
+| dis.py | Unified configuration and deployment orchestration |
+| configuration.py | Validate unified settings and resolve the runtime directory |
 | bootstrap.py | Install pinned Fabric, CoreDNS, and Redis tools |
-| network.py | Plan and manage configurable Fabric networks on one or more machines |
-| services.py | Manage Redis, the event publisher, CoreDNS, and the API |
-| upgrade-ledger.py | Upgrade an initialized v1 network and migrate state in place |
-| acceptance.py --restart --all-gateways | Verify signed workflow, every peer and Gateway, replica endorsement, event publication, DNS AXFR, replay, and restart |
-| acceptance-events.py | Stop the publisher, submit offline updates, and verify checkpoint catch-up |
-| benchmark-caliper.py | Run signed registration with Caliper and generate isolated benchmark artifacts |
-| benchmark-paper.py | Measure registration, committed-state reads, or DNS under a fixed offered-load sweep |
-| benchmark-scale.py | Measure majority-endorsed registration across configurable organization counts |
-| smoke.py | Verify the development file backend and CLI signing |
+| network.py | Plan and manage Fabric networks on one or multiple machines |
+| services.py | Manage Redis, publisher, CoreDNS, and API |
+| topology.py | Validate organizations, nodes, endorsement, ports, and placement |
+| transport.py / node-agent.py | Deploy and manage remote node processes over SSH |
+| upgrade-ledger.py | Migrate the earlier ledger layout |
+| acceptance.py | Verify business workflow, peers, Gateways, DNS, and restart |
+| acceptance-events.py | Verify publisher recovery after offline commits |
+| benchmark-caliper.py | Run the signed-registration Caliper workload |
+| benchmark-paper.py | Measure registration, ledger reads, or DNS queries |
+| benchmark-scale.py | Measure registration across organizational scales |
+| smoke.py | Exercise the development backend and request signing |
 
-Use DIS_RUNTIME to isolate deployment state and acceptance reports for each experiment. The [experiment deployment guide](../docs/experiment-deployment.md) describes topology files and SSH workers.
+## Select a deployment for direct commands
 
-Acceptance reports are written beneath DIS_RUNTIME. Managed services remain running after connected acceptance. The event acceptance requires exclusive control of the project's publisher process.
+The launcher sets DIS_RUNTIME from the configuration. When running scripts directly, set it explicitly:
+
+~~~bash
+export DIS_RUNTIME="$PWD/runtime/configured"
+python3 scripts/network.py status
+python3 scripts/services.py status
+~~~
+
+Acceptance and benchmark scripts use this runtime to find the selected network. Reports are stored under the chosen runtime or benchmark output directory. See [verification](../docs/verification.md), [deployment](../docs/experiment-deployment.md), and [Caliper](../benchmarks/caliper/README.md).

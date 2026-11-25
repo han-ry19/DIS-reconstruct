@@ -1,59 +1,58 @@
 # System verification
 
-The connected reconstruction runs Fabric 2.4.9, Redis 7.2.5, and CoreDNS 1.12.0 with the repository's disredis plugin on Linux amd64.
+Verification covers business transitions, Fabric commits, DNS publication, and deployment recovery. Run connected checks against a dedicated deployment because they create records and may restart its components.
 
-## Verified behavior
-
-- Signed registration, authorization requests, and owner decisions commit through Fabric.
-- Forged signatures, non-owner decisions, and conflicting request IDs are rejected.
-- Exact retries return their stored results without changing business sequence.
-- Every configured peer independently returns the expected authorization.
-- Every Gateway discovers the deployed endorsement policy; explicit replica endorsements commit successfully.
-- Committed chaincode events publish the matching Redis and authoritative DNS state.
-- Full TCP AXFR compares every record in both zones with the ledger projection.
-- A 600-object zone transfers across multiple DNS messages without losing records.
-- Fabric, Redis, API, publisher, and CoreDNS restart with records retained.
-- A publisher stopped during a complete business workflow catches up from its event checkpoint.
-- The v1 state document migrates to object keys and preserves historical receipts.
-- Race-enabled Go tests and static analysis pass.
-
-## Commands
-
-```bash
-go test -race ./...
-go vet ./...
-DIS_FABRIC_CONFIG="$PWD/runtime/fabric/gateway.json" go test -v ./internal/fabric -run TestLiveFabricWorkflow
-python3 scripts/acceptance.py --restart --all-gateways
-python3 scripts/acceptance-events.py
-```
-
-An optional Redis integration test uses DIS_TEST_REDIS_ADDRESS pointing to an isolated instance. These tests own the DIS keys in the selected instance; use a separate test port and go test -race -p 1 ./... to serialize the Redis test packages.
-
-Runtime acceptance reports contain concrete results. Generated identities, keys, ledgers, and logs remain outside version control. The [source mapping](original-implementation.md) connects the implemented registration, authorization, and resolution components to their upstream source references.
-
-## Fresh deployment verification
-
-A separate clean clone at revision 049b493 built all commands and Redis from the verified release archives. It created a new Fabric network with fresh certificates and ledgers, then passed the workflow, peer-query, exact-retry, complete DNS transfer, restart, and stopped-publisher catch-up checks. Only downloaded release archives were reused; no running deployment state was copied. The temporary network and services were stopped after verification.
-
-## Configurable deployment verification
-
-The following connected deployments passed the signed workflow, all-peer queries, all-Gateway discovery, explicit replica endorsement, complete DNS verification, exact replay, and component restart checks:
-
-| Organizations | Peers per organization | Orderers | Endorsement threshold | Machines |
-|---|---|---|---|---|
-| 4 | 1 | 4 | 3 | 1 |
-| 3 | 2 | 3 | 2 | 1 |
-| 5 | 1 | 3 | 3 | 1 |
-| 3 | 2 | 3 | 2 | 2 |
-
-The two-machine deployment also passed stopped-publisher catch-up. Existing four-organization ledgers restarted with their original ports and data. Each temporary deployment used an isolated runtime directory. These checks verify deployment and business behavior; throughput and latency measurements are separate experiments.
-
-Topology validation, legacy address preservation, remote path rendering, and stale-PID process protection are covered by:
+## Unit tests and static checks
 
 ~~~bash
+go test -race ./...
+go vet ./...
 python3 -m unittest discover -s scripts -p 'test_*.py' -v
 ~~~
 
-## Management update verification
+The tests exercise signatures, ownership, updates, request replay, ledger mappings, DNS encoding, recipient removal, event application, configuration validation, and process management.
 
-The management completion was verified with three organizations, one peer per organization, three Raft orderers, and two-organization endorsement. The connected workflow checks all seven fields in Algorithms 7–8 of Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications. Unit tests also compare the emitted events with the committed snapshot after every successful operation. See [management operations](management-updates.md) for commands and covered cases.
+## Connected workflow
+
+Start the default configured deployment with ./run.sh, then select its runtime:
+
+~~~bash
+export DIS_RUNTIME="$PWD/runtime/configured"
+export DIS_FABRIC_CONFIG="$DIS_RUNTIME/fabric/gateway.json"
+python3 scripts/acceptance.py --restart --all-gateways
+python3 scripts/acceptance-events.py
+go test -race -count=1 -v ./internal/fabric -run TestLiveFabricWorkflow
+~~~
+
+Acceptance checks signed registration and authorization, queries through every peer, Gateway discovery, replica endorsements, exact retries, complete DNS zones, and restart recovery. The event test stops the publisher during commits and checks subsequent catch-up. Reports and generated records are saved in DIS_RUNTIME.
+
+## Management updates
+
+~~~bash
+DIS_TEST_DNS_ADDRESS=127.0.0.1:38530 \
+go test -race -count=1 -v ./internal/fabric -run TestLiveFabricManagementUpdates
+~~~
+
+Set DIS_FABRIC_CONFIG as above. Adjust the DNS address for other configurations. This workflow covers address and signature changes, ownership transfer, and authorization status, permission, recipient, and expiration changes. See [management operations](management-updates.md).
+
+## Redis integration
+
+Use an isolated Redis instance; these tests replace the DIS keys in that instance. Serialize packages sharing the instance:
+
+~~~bash
+DIS_TEST_REDIS_ADDRESS=127.0.0.1:16379 go test -race -p 1 ./...
+~~~
+
+## Acceptance criteria
+
+| Area | Expected result |
+|---|---|
+| Signed operations | Valid requests commit; invalid signatures and unauthorized changes are rejected |
+| Retries | An identical actor/request pair returns its recorded result; changed content conflicts |
+| Ledger queries | Configured peers return the committed business records |
+| Publication | Redis state and complete authoritative zones match the ledger projection after catch-up |
+| Recipient changes | Old authorization keys and DNS names are removed |
+| Recovery | Restart preserves records; event processing resumes from the saved checkpoint |
+| Deployment | Requested topology and ports appear in status; managed processes start and stop correctly |
+
+Use the same checks for each topology selected in [deployment](experiment-deployment.md). Throughput and latency are measured separately with the [Caliper workload](../benchmarks/caliper/README.md).

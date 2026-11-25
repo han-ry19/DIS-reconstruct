@@ -1,45 +1,33 @@
 # Implementation decisions
 
-## Deterministic data registration
+## Signed requests and deterministic execution
 
-Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership's registration algorithm creates a data identifier using a UUID. In this reconstruction, the client supplies a data identifier bound to the signed request. The contract checks that it is a valid single-label name under .data and is unique. It does not enforce UUIDv4. Every endorsing peer validates the same supplied input deterministically. UUID generation and validation would require an explicit implementation change.
+Ed25519 signatures bind the deployment domain, operation, actor, request ID, timestamp, and typed parameters. SigningBytes in internal/domain defines the encoding. Clients supply unique data names under .data, bound to the signed request, so every endorsing peer validates the same input.
 
-## Owner decisions and Fabric endorsement
+Request IDs are scoped to their actor. An exact retry returns the recorded result; changed content with the same ID is rejected. New requests must fall within five minutes of the execution timestamp. The Fabric adapter uses GetTxTimestamp; the file backend uses its execution clock.
 
-The data owner decides an application's access permissions. Fabric peers check requester identity, permissions, and state conditions under the contracts and endorse the execution result. The API and transaction workflow preserve these distinct responsibilities.
+The data owner decides application permissions. Fabric peers verify the signed operation and its business conditions, then endorse the execution result. Ordering and commit follow the configured Fabric policies.
 
-## Consistent time inputs
+## Ledger organization
 
-Issuance and expiration fields use inputs shared within the transaction. The development API uses its execution clock; the Fabric adapter uses GetTxTimestamp. This Fabric timestamp is transaction input, rather than an independently certified wall clock. New requests must fall within five minutes of the execution timestamp; exact recorded retries retain their original result.
+Fabric stores identities, data objects, pending authorizations, and receipts under composite keys. Decided authorizations are embedded in data objects, following the historical chaincode. Identifier mappings, owner and recipient associations, transaction information, and registration metadata support management queries.
 
-## Ledger-to-DNS synchronization
+Fresh ledgers identify successful transitions by transaction ID and actor-scoped receipts. Snapshots derive the publication sequence from committed receipts, keeping unrelated registrations' write sets independent. Existing ledgers retain their sequence format. MigrateState converts the earlier dis.state.v1 document to object records.
 
-Following the original service and chaincode, a full snapshot initializes the projection and committed chaincode events update Redis records. CoreDNS reads those records through disredis. Operational checks distinguish ledger results from authoritative DNS responses.
+The development backend stores an atomic JSON document protected by a single-writer lock.
 
-## Business scope
+## Authorization updates
 
-The reconstruction covers identity registration and lookup, data registration, updates and resolution, and authorization requests, decisions and updates. Data addresses connect these records to external data services. Interfaces, configuration, and acceptance scenarios follow this workflow.
+A newly signed authorization request writes a pending record at the data/owner/recipient key. An owner decision sets status and issuance time while retaining the requested permissions and expiration. Field updates follow Algorithms 7–8 of *Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications*. See [management operations](management-updates.md) for ownership transfer, recipient changes, and pending-record behavior.
 
-## Request authentication and retries
+## DNS publication
 
-Ed25519 signatures bind the domain, operation, actor, request ID, timestamp, and typed parameters. SigningBytes in internal/domain defines the versioned encoding. A request ID is scoped to its actor: an exact retry returns the stored result, and a different payload with the same ID is rejected.
+The publisher loads a committed snapshot, then consumes committed events. Redis transactions update DNS fields, cached business objects, and the recovery checkpoint together. CoreDNS reads the resulting zone hashes.
 
-Data signatures are stored as data attributes and checked for encoding. Verification against the original data occurs in the data-consumption workflow.
+Identity records use CERT/TXT, data records RP/URI/TXT, and authorization records TXT. Ed25519 CERT type 254 carries an OID-length byte, the DER OID value for 1.3.101.112, and the raw key. Profiles remain registration metadata. Complete AXFR verification compares authoritative records, including SOA serials, with the ledger projection.
 
-## Authorization record updates
+## Completion and data consumption
 
-Following Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership Algorithm 2, a newly signed request writes a pending record at the data/owner/recipient composite key. An exact retry returns its historical result. Following Algorithm 3, an owner decision preserves requested permissions and expiration while setting status and issuance time.
+A successful API write requires valid Fabric commit status. The result's committed_at field contains the transaction's execution timestamp, supplied by GetTxTimestamp in Fabric. Measure client-observed commit latency separately. DNS publication completes when the corresponding authoritative records are available.
 
-## Initial state layout
-
-The development backend persists an atomic JSON state document and uses a single-writer file lock. Fabric stores identities, data objects, pending authorizations, and receipts under composite keys. Confirmed authorizations are embedded in each data object, following the original chaincode. Fresh Fabric ledgers identify successful transitions by transaction ID and persist actor-scoped retry receipts. The DNS publication sequence is derived from committed receipts and advances as distinct committed events are applied; independent registrations do not rewrite a shared counter. Existing ledgers retain their sequence format. MigrateState converts an existing dis.state.v1 document in place.
-
-## DNS record encoding
-
-The projection follows Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications's identity CERT/TXT, data RP/URI/TXT, and authorization TXT structure. For Ed25519 key material, CERT type 254 carries an OID-length byte, the DER OID value for 1.3.101.112, and the raw key. Data profiles remain registration metadata and are not exposed at an additional DNS name. Full AXFR verification compares all authoritative records, including SOA serials, with the committed snapshot.
-
-## Completion timestamps
-
-The result field committed_at records the execution timestamp used by the transition. In Fabric it is the transaction timestamp; a successful HTTP result additionally requires a valid commit status. It is not an instrumented peer database commit time.
-
-Data and authorization field updates follow Algorithms 7–8 of Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications. The [management guide](management-updates.md) documents ownership transfer, recipient moves, restored historical key families, and retained reconstruction compatibility.
+The stored data signature is an owner-supplied attribute with validated encoding. External data services retain the payload and use the published identity, data, and authorization records for authentication and access control.

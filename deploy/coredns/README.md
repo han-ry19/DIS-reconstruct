@@ -1,37 +1,38 @@
 # Redis-backed CoreDNS
 
-The connected deployment follows the original DIS publication architecture: committed Fabric events update Redis, and a CoreDNS plugin answers DNS queries from Redis records.
+Committed Fabric events update Redis; CoreDNS answers DNS queries through the disredis plugin.
 
-## Components
+| Component | Role |
+|---|---|
+| cmd/dis-sync | Initial snapshot, committed event consumption, publication, and recovery checkpoints |
+| internal/dns | Record projection, Redis updates, and complete-zone verification |
+| plugin/disredis | Redis lookup and DNS response construction |
+| cmd/dis-coredns | CoreDNS with disredis, bind, and errors plugins |
 
-- cmd/dis-sync: full-state bootstrap, committed event consumption, Redis publication, and restart checkpoints.
-- plugin/disredis: a CoreDNS 1.12.0 adapter for the original DIS per-label JSON format.
-- cmd/dis-coredns: builds CoreDNS with the adapter, bind, and errors plugins.
-- Redis 7.2.5: installed from a pinned, checksum-verified source archive by scripts/bootstrap.py.
+## Start and verify
 
-The Redis zone keys are uid. and data.; fields are relative names, with @ for the zone apex. Each field contains JSON arrays for supported record types. A stable SOA serial follows the business sequence.
+The unified launcher starts these components with Fabric:
 
-## Run and verify
+~~~bash
+./run.sh
+bin/dis-demo -url http://127.0.0.1:38080
+bin/dis-sync -fabric-config runtime/configured/fabric/gateway.json \
+  -redis 127.0.0.1:38679 -check -verify 127.0.0.1:38530
+~~~
 
-After building all commands and starting Fabric:
+These addresses belong to the default config.yaml. Change them for another deployment. The check command reads committed state, compares the Redis projection, and verifies both zones by TCP AXFR.
 
-```bash
-python3 scripts/services.py up
-bin/dis-demo -url http://127.0.0.1:28080
-bin/dis-sync -fabric-config runtime/fabric/gateway.json -redis 127.0.0.1:28679 -check -verify 127.0.0.1:28530
-python3 scripts/acceptance-events.py
-```
+## Records and persistence
 
-The check command compares the Redis projection and full authoritative AXFR results with Fabric. It does not publish. The event acceptance stops the publisher, commits a workflow while it is offline, and verifies event catch-up after restart.
+Redis stores zones in the uid. and data. hashes. Fields are relative names, with @ for the apex; values contain JSON record arrays. Identity records expose CERT/TXT, data records RP/URI/TXT, and authorization records TXT. SOA serials follow the publication sequence.
 
-The service manager uses loopback API port 28080, DNS port 28530, and Redis port 28679. Initial ports are configurable. Redis AOF persistence and the saved event position support restart recovery. Public DNS records, object-cache changes, and checkpoint updates share a Redis transaction.
+Ordinary queries use HGET; complete-zone transfer uses HGETALL. Redis AOF persistence retains published records. Record changes, cached business objects, and event checkpoints are written in the same Redis transaction. The publisher reconnects using the saved event position.
 
-## Export zone files
+## Zone-file export
 
-```bash
-bin/dis-sync -fabric-config runtime/fabric/gateway.json -out runtime/dns -once
-```
+~~~bash
+bin/dis-sync -fabric-config runtime/configured/fabric/gateway.json \
+  -out runtime/configured/dns -once
+~~~
 
-This command exports a full snapshot for inspection. The connected CoreDNS process reads Redis, not these files.
-
-See the [original implementation mapping](../../docs/original-implementation.md) for source revisions and adaptation details.
+The export supports inspection. CoreDNS serves records from Redis. External data services use the published identity and authorization records to authenticate requesters and decide access.

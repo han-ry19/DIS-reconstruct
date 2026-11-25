@@ -45,7 +45,7 @@ Put these parameters in a request with operation data.update or authorization.up
 
 ## Ownership and recipient changes
 
-An RP update changes the data owner and preserves existing authorization records, consistent with Algorithm 7's single-field update. The former owner cannot make subsequent changes. The new owner can manage an existing grant by naming its original authorization_owner. This parameter addresses the reconstruction's existing data/issuer/recipient storage key; it does not create another governance role.
+An RP update changes the data owner and preserves existing authorization records, consistent with Algorithm 7's single-field update. The former owner cannot make subsequent changes. The new owner can manage an existing grant by naming its original authorization_owner. This parameter selects the issuer in the data/issuer/recipient storage key.
 
 DNS authorization names contain the recipient and data identifier. Changing recipient removes the old authorization key and DNS label before publishing the replacement. A collision with another confirmed or pending authorization is rejected, including authorizations retained from a previous owner. An application cannot create a second issuer-specific grant at the same DNS name after ownership transfer; the current owner can edit the existing record.
 
@@ -53,7 +53,7 @@ A pending request can overlay an earlier decision at the same composite key. Upd
 
 ## Ledger records and queries
 
-The historical chaincode revision 63c85ef11515e9183e7e2bc4b01fb34f1e390d00 provides the source for the following key families:
+The [historical chaincode revision 63c85ef](https://github.com/fuxi-inc/dip-dis-chaincode/tree/63c85ef11515e9183e7e2bc4b01fb34f1e390d00) provides the source for the following key families:
 
 | Key family | Role | Historical source |
 |---|---|---|
@@ -63,15 +63,15 @@ The historical chaincode revision 63c85ef11515e9183e7e2bc4b01fb34f1e390d00 provi
 | TransactionInfo | Creation time, latest transaction ID and update time | contract/get_transaction_info.go |
 | RegistrationData | Registration description | contract/save_dataobject.go |
 
-The internal index follows the historical Base64(transaction ID + identifier) construction. New registrations write mappings, associations, transaction information, and the profile's registration metadata. Updates move affected associations and retain creation time while recording the new transaction ID and timestamp. The current reconstruction retains its existing business-object schema; these restored records do not constitute a byte-compatible import of the historical ledger. Its timestamps use the current schema's Unix seconds.
+The internal index follows the historical Base64(transaction ID + identifier) construction. New registrations write mappings, associations, transaction information, and the profile's registration metadata. Updates move affected associations and retain creation time while recording the new transaction ID and timestamp. The reconstruction stores these keys alongside its business objects and represents timestamps as Unix seconds.
 
-The contract exposes TransDOIToIndex, TransIndexToDOI, GetTransactionInfo, GetOwnedData, and GetAuthorizedData, each taking one identifier (TransIndexToDOI takes an internal index). The list queries validate authoritative business records, with approved status and unexpired authorization required for recipient access. An association alone is not permission. Currently the list queries scan the business snapshot, keeping pre-index ledgers readable. Existing ledgers acquire auxiliary records as their objects are written; no full historical-index backfill is performed.
+The contract exposes TransDOIToIndex, TransIndexToDOI, GetTransactionInfo, GetOwnedData, and GetAuthorizedData, each taking one identifier (TransIndexToDOI takes an internal index). The list queries validate authoritative business records, with approved status and unexpired authorization required for recipient access. Currently the list queries scan the business snapshot, keeping pre-index ledgers readable. Existing ledgers acquire auxiliary records as their objects are written.
 
 ## Event publication
 
 Each successful update emits the affected business object. Recipient moves also emit the removed authorization identity. The publisher applies this deletion and the replacement to its state, then publishes Redis DNS fields, cached business objects, and checkpoint together. Replaying the event does not restore removed records. Full-snapshot and incremental publication generate the same records.
 
-The DNS projection publishes identity CERT/TXT, data RP/URI/TXT, and authorization TXT. Profiles remain registration metadata and are not published at an extra _profile DNS label. External payloads remain with their data service; updating a signature records the owner's supplied signature and does not fetch or verify that payload.
+The DNS projection publishes identity CERT/TXT, data RP/URI/TXT, and authorization TXT. Profiles remain registration metadata. External data services retain the payload; a signature update records the owner-supplied signature attribute.
 
 A valid Fabric commit completes the management transaction. The matching authoritative answer completes DNS publication. Recursive resolver caches follow the configured DNS TTL; this reconstruction implements the papers' DNS publication model.
 
@@ -92,13 +92,9 @@ DIS_TEST_REDIS_ADDRESS=127.0.0.1:16379 go test -race -p 1 ./...
 A running deployment of this chaincode enables the management integration test. The DNS address is optional; setting it additionally checks authoritative publication of each kind of update and removal of the former recipient:
 
 ~~~bash
-DIS_FABRIC_CONFIG="$PWD/runtime/fabric/gateway.json" \
-DIS_TEST_DNS_ADDRESS=127.0.0.1:28530 \
+DIS_FABRIC_CONFIG="$PWD/runtime/configured/fabric/gateway.json" \
+DIS_TEST_DNS_ADDRESS=127.0.0.1:38530 \
 go test -race -count=1 -v ./internal/fabric -run TestLiveFabricManagementUpdates
 ~~~
 
 The unit tests cover all seven fields, rejected changes with unchanged state, ownership transfer, collisions, pending/confirmed overlays, exact retries, HTTP persistence, event/snapshot equivalence, Redis key deletion, and recovery. The integration workflow commits fourteen transactions and checks all seven update fields.
-
-## Reconstruction compatibility
-
-The pre-existing Ed25519 request envelope, actor/request receipts, five-minute input window, receipt-derived publication sequence, and transactional Redis checkpoints remain in use. They are reconstruction engineering choices, not additional paper algorithms. Client-selected data names remain supported; the contract does not enforce UUIDv4. Identity rotation, Orb, discovery services, and external data delivery are outside this management completion.

@@ -1,18 +1,18 @@
 # DIS-reconstruct
 
-This project reconstructs the DNS identifier registration, management, authorization, and resolution components described in Figure 1 of [Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership](https://ieeexplore.ieee.org/document/10197025) and [Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications](https://link.springer.com/article/10.1007/s11280-025-01337-z), following the papers and their source code.
+This project reconstructs the DNS identifier registration, management, authorization, and resolution components described in [Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership](https://ieeexplore.ieee.org/document/10197025) and [Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications](https://link.springer.com/article/10.1007/s11280-025-01337-z), following the papers and their source code.
 
 ## System design
 
 ### Source architecture and reconstruction scope
 
-The two source papers describe Data Interoperating Architecture (DIA), in which the Data Interoperating System (DIS) connects blockchain-based management, an identifier system, and a data discovery service. End users manage their data and authorizations; applications use these services to locate and access data held in personal data stores.
+The source architecture connects blockchain-based management to identifier resolution. The later paper extends this architecture with a data discovery service. End users manage their data and authorizations; applications use these services to locate and access data held in personal data stores.
 
 ![DIA conceptual architecture with the reconstructed components highlighted](docs/images/dia-scope.svg)
 
 **Figure attribution:** This schematic is redrawn with reference to the original DIA architecture figure in Figure 1 of [Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership](https://ieeexplore.ieee.org/document/10197025) and Figure 4 of [Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications](https://link.springer.com/article/10.1007/s11280-025-01337-z). The layout is simplified, and colors identify the components covered by this reconstruction.
 
-DIS-reconstruct implements the identity, data, and authorization management components and their connection to identifier resolution, highlighted in green. Metadata discovery and reverse lookup are outside the current reconstruction. Personal data storage and access control remain external services.
+DIS-reconstruct implements the identity, data, and authorization management components and their connection to identifier resolution, highlighted in green. Metadata discovery is an adjacent service in the source architecture. Personal data storage and access control run in external services.
 
 ### Reconstructed implementation
 
@@ -28,7 +28,7 @@ DIS-reconstruct implements the identity, data, and authorization management comp
 
 Users and applications sign management requests and submit them through the DIS API. Fabric contracts check signatures, ownership, and operation conditions; Fabric validates endorsements and commits transactions. The synchronization service publishes the resulting records to Redis, and CoreDNS answers identifier queries. A successful ledger commit and a DNS-visible update are separate completion points.
 
-External data services retain the original payloads and perform requester authentication and access control using the relevant records. The reconstruction publishes these records; it does not implement the external data service.
+External data services retain the original payloads and perform requester authentication and access control using the relevant records. The reconstruction supplies the identity, data, and authorization records used by those services.
 
 Fabric peer, orderer, and chaincode processes can run on one or multiple machines. The API, synchronization service, Redis, and CoreDNS currently run on the controller. See the [experiment deployment guide](docs/experiment-deployment.md) for configurable organization counts and node placement.
 
@@ -127,7 +127,7 @@ Run every command on the controller with the same configuration file:
 
 Relative runtime paths resolve against the configuration file's directory. The example therefore uses ../runtime/two-host. Use a new runtime directory and available ports when changing topology; editing YAML does not change membership in an existing channel. Peer and orderer ports are derived from port_base and printed by plan. See the [configuration guide](config/README.md) and [experiment deployment guide](docs/experiment-deployment.md) for field definitions and port allocation.
 
-The API, DNS, and Redis listeners currently bind to the controller's loopback interface. Applications running on the controller can use them directly. Remote API clients can use an SSH local-forwarding tunnel; remote DNS access requires an appropriate tunnel or an explicit listener configuration change. Multi-machine node deployment does not expose these services automatically. Remote node logs are stored under the worker's configured runtime directory.
+The API, DNS, and Redis listeners currently bind to the controller's loopback interface. Applications running on the controller can use them directly. Remote API clients can use an SSH local-forwarding tunnel; remote DNS access requires an appropriate tunnel or an explicit listener configuration change. Remote node logs are stored under the worker's configured runtime directory.
 
 ## Documentation
 

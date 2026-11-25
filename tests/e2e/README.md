@@ -1,5 +1,12 @@
 # End-to-end verification
 
-The connected scenario registers a user and application, registers data, requests access, records the owner's approval, and resolves the result through Redis-backed CoreDNS.
+The connected workflow registers a user and application, registers data, requests access, records the owner's decision, and verifies the resulting ledger and DNS records.
 
-Run scripts/acceptance.py --restart --all-gateways to check every configured peer, Gateway, replica endorsement, full DNS records, exact replay, and component recovery. Run scripts/acceptance-events.py to prove event catch-up after offline commits without forcing a full publication. Results are saved under DIS_RUNTIME, which defaults to runtime in the checkout. See the [experiment deployment guide](../../docs/experiment-deployment.md) for topology selection.
+~~~bash
+./run.sh
+export DIS_RUNTIME="$PWD/runtime/configured"
+python3 scripts/acceptance.py --restart --all-gateways
+python3 scripts/acceptance-events.py
+~~~
+
+Use a dedicated test deployment. The first command sequence checks every configured peer and Gateway, explicit replica endorsements, complete DNS zones, exact retries, and component recovery. The event test stops the publisher during transactions and checks checkpoint-based catch-up. Reports are saved under DIS_RUNTIME. See [verification](../../docs/verification.md).

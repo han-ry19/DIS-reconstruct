@@ -1,23 +1,38 @@
 # Architecture
 
-This project reconstructs the DNS identifier registration, management, authorization, and resolution components described in Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership and Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications, following the papers and their source code.
+DIS-reconstruct implements the identity, data, and authorization management path of the source architecture and connects it to DNS resolution. See the [source mapping](dia-mapping.md) for paper references.
 
-## Management
+![Source architecture and reconstruction scope](images/dia-scope.svg)
 
-The API accepts signed identity registration, data registration and update, authorization request, owner-decision, and authorization-update operations. Fabric peers execute the transitions under the chaincode endorsement policy. The API waits for a valid commit before reporting a successful update.
+## Components and workflow
 
-Composite ledger keys separate identities, data objects, pending authorizations, and retry receipts. Decisions update the confirmed authorization map embedded in a data object. Transaction IDs identify committed results, while actor-scoped receipts support exact retries and event deduplication. The DNS serial counts committed business transitions.
+![Implementation](images/implementation.svg)
+
+Users and applications sign management requests and submit them to the DIS API. The API forwards requests through Fabric Gateway. Contracts verify signatures, current ownership, and operation parameters. Fabric collects endorsements, orders transactions through Raft, and validates and commits them.
+
+| Component | Responsibility | Code |
+|---|---|---|
+| API | Submit signed requests and query business records | internal/api, cmd/dis-api |
+| Business rules | Identity registration, data updates, authorization requests and decisions | internal/domain |
+| Fabric adapter | Gateway submission, queries, and event subscription | internal/fabric |
+| Contracts | Load affected records, apply rules, persist changes, emit events | chaincode/dis |
+| Publisher | Apply committed events and maintain a recoverable DNS projection | cmd/dis-sync, internal/dns |
+| DNS server | Answer identifier queries from Redis records | cmd/dis-coredns, plugin/disredis |
+
+## Ledger organization
+
+Composite keys separate identities, data objects, pending authorizations, and request receipts. Data objects embed decided authorizations. Auxiliary records maintain identifier/index mappings, owner and recipient associations, registration profiles, and transaction information.
+
+Ordinary updates load affected business objects and the actor's request receipt. Fresh ledgers use transaction IDs and actor-scoped receipts to identify successful operations. Snapshots derive the publication sequence from committed receipts, allowing independent registrations to avoid a shared counter write.
 
 ## Publication and resolution
 
-A full snapshot initializes the Redis projection. Subsequent committed chaincode events update the affected DNS and cached object fields. Redis publishes those fields and the event checkpoint in one transaction. The publisher resumes from that checkpoint after a disconnect and loads a snapshot if it detects a sequence gap in the sequence-based ledger format. Fresh ledgers deduplicate committed events using their actor/request keys.
+The publisher initializes from a committed snapshot and follows chaincode events. Redis transactions update DNS records, cached business objects, and the event checkpoint together. Reconnection resumes at the saved block and transaction. Already applied events are skipped; sequence-based legacy ledgers recover detected event gaps through a snapshot.
 
-CoreDNS runs the disredis plugin and reads the requested zone and relative label from Redis. Zone-file exports are available for inspection and development. Normal Fabric publication is event-driven.
+CoreDNS queries Redis by zone and relative name. Identity records expose public keys; data records expose ownership, address, and signature attributes; authorization records expose status, permissions, and expiration. External data services use these records when authenticating requesters and enforcing access.
 
-## Completion
+A successful API write confirms a valid Fabric commit. DNS publication completes when the corresponding authoritative records are available. Zone-file exports support inspection; the running DNS server reads Redis.
 
-A valid Fabric commit completes the ledger operation. A matching authoritative DNS answer completes publication. The acceptance runner checks the event-driven projection and both full DNS zones without triggering publication itself.
+## Deployment
 
-The [original implementation mapping](original-implementation.md) records the source revisions and component design used for the registration, authorization, and resolution workflow.
-
-Data and authorization field changes, ownership transfer, auxiliary ledger records, and recipient-removal events are described in [management operations](management-updates.md).
+Fabric peers, orderers, and colocated chaincode processes can be placed across machines. The API, publisher, Redis, and CoreDNS run on the controller. [config.yaml](../config.yaml) and [run.sh](../run.sh) provide the deployment entry point. See [configuration](../config/README.md) and [multi-machine deployment](experiment-deployment.md).

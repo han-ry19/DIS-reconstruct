@@ -1,5 +1,17 @@
 # Integration verification
 
-Go tests cover signed requests, contract transitions, migration, DNS encoding, event sequence validation, and publication recovery. Set DIS_FABRIC_CONFIG to run the live Fabric workflow. Set DIS_TEST_REDIS_ADDRESS to an isolated Redis instance to test atomic projection and checkpoint recovery.
+Go integration tests connect the business rules to Fabric and the DNS projection to Redis. Set DIS_FABRIC_CONFIG for live ledger tests and DIS_TEST_DNS_ADDRESS to verify authoritative publication during management updates.
 
-The connected acceptance commands are documented in [system verification](../../docs/verification.md).
+~~~bash
+export DIS_FABRIC_CONFIG="$PWD/runtime/configured/fabric/gateway.json"
+DIS_TEST_DNS_ADDRESS=127.0.0.1:38530 \
+go test -race -count=1 -v ./internal/fabric
+~~~
+
+Use a dedicated deployment. Redis tests use DIS_TEST_REDIS_ADDRESS and replace that instance's DIS keys. Run packages serially when sharing one Redis instance:
+
+~~~bash
+DIS_TEST_REDIS_ADDRESS=127.0.0.1:16379 go test -race -p 1 ./...
+~~~
+
+See [system verification](../../docs/verification.md) for setup and acceptance criteria.

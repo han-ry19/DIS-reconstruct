@@ -1,47 +1,36 @@
 # Fabric network
 
-The default native Linux deployment runs four peer organizations, one peer per organization, and four Raft orderers in a separate ordering organization. Topology files configure other organization, peer, orderer, endorsement, and machine counts; see the [experiment deployment guide](../../docs/experiment-deployment.md). The application channel and chaincode are named dis. The business endorsement policy requires any three of the four peer organizations.
+The network manager creates peer organizations, Raft orderers, the dis channel, and the dis chaincode. The default configuration uses four organizations with one peer each and requires three organizations to endorse a business operation.
 
-Peer and orderer traffic uses TLS. Each peer connects to its own external chaincode process on loopback. Generated development MSP identities and durable ledgers are stored under runtime/fabric.
+## Start and inspect
 
-## Setup
+Install dependencies and build commands using the [running guide](../../docs/runbook.md), then run:
 
-Requirements: Linux amd64, Go 1.23.4 or later, Python 3.9 or later, and PyYAML.
+~~~bash
+./run.sh plan
+./run.sh
+./run.sh status
+~~~
 
-```bash
-python3 -m pip install PyYAML
-python3 scripts/bootstrap.py
-go build -o bin/ ./cmd/...
-python3 scripts/network.py up
-```
+[config.yaml](../../config.yaml) controls organization counts, peer replicas, ordering nodes, endorsement threshold, Gateway concurrency, addresses, and placement. See [deployment](../../docs/experiment-deployment.md) for multiple machines.
 
-The bootstrap script downloads the official Fabric 2.4.9 release. A previously downloaded archive can be supplied with --archive and an expected checksum with --sha256. FABRIC_CFG_PATH is set by the network manager for each component.
+## Runtime layout
 
-On a new deployment, --port-base or the topology file selects the Fabric port range. Peer and orderer endpoints are advertised using the configured host addresses. External chaincode, operations, and administration endpoints use loopback. The manager writes logs, certificates, ledger data, and gateway.json beneath DIS_RUNTIME/fabric; DIS_RUNTIME defaults to runtime in the checkout.
+Under the configured runtime directory, fabric/ stores certificates, node configuration, ledgers, process records, logs, and gateway.json. Peer and orderer traffic uses TLS. Each peer connects to its colocated external chaincode process on loopback. Fabric's organizational identities and the end-user request signatures serve separate roles: network participation and business authorization.
 
-## Run the API and demo
+The API uses gateway.json to submit transactions and waits for valid commit status. Contracts verify the embedded business request and update the ledger.
 
-```bash
-bin/dis-api -fabric-config runtime/fabric/gateway.json
-```
+## Component-level commands
 
-In another terminal:
+For the default unified configuration:
 
-```bash
-bin/dis-demo
-DIS_FABRIC_CONFIG="$PWD/runtime/fabric/gateway.json" go test -v ./internal/fabric -run TestLiveFabricWorkflow
-```
-
-The API waits for valid Fabric commit before returning a successful transaction result. The live integration test submits business operations and checks signatures, owner permissions, conflicting request IDs, retries, and query results.
-
-## Stop and restart
-
-```bash
+~~~bash
+export DIS_RUNTIME="$PWD/runtime/configured"
 python3 scripts/network.py status
-python3 scripts/network.py down
-python3 scripts/network.py up
-```
+~~~
 
-The manager restarts the saved network using its existing certificates and ledgers. Stop the API separately with Ctrl+C. The manager controls only the process IDs and start identities recorded for this project.
+Use ./run.sh down and ./run.sh to stop and restart the complete deployment. For manual operations, stop services before network nodes. The network manager controls recorded process identities and retains ledger data on shutdown.
 
-The four-organization topology is a reconstruction configuration; the paper-to-implementation mapping is documented separately. The initial chaincode state layout is described in [implementation decisions](../../docs/decisions.md).
+## Legacy ledger migration
+
+For a deployment using the earlier single-document ledger layout, select its DIS_RUNTIME, stop services and network, build the current commands, then run python3 scripts/upgrade-ledger.py. The script advances the chaincode definition and converts the state while preserving identifiers and receipts. Start the complete deployment again after migration. See [source and storage design](../../docs/original-implementation.md).
