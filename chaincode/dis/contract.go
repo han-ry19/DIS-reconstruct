@@ -144,15 +144,15 @@ func (c *Contract) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		}
 		return success(v.Data)
 	case "GetAuthorization":
-		if len(args) != 3 {
-			return shim.Error("GetAuthorization requires data, owner, recipient")
+		if len(args) != 2 {
+			return shim.Error("GetAuthorization requires data and recipient")
 		}
 		var a domain.AuthorizationRecord
-		ok, err := read(stub, authorizationKind, &a, args[0], args[2])
+		ok, err := read(stub, authorizationKind, &a, args[0], args[1])
 		if err != nil {
 			return shim.Error(err.Error())
 		}
-		if !ok || a.OwnerID != args[1] {
+		if !ok {
 			return shim.Error("not found")
 		}
 		return success(a)

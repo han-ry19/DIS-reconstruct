@@ -30,9 +30,9 @@ func (b *Backend) GetData(id string) (domain.DataIdentifier, error) {
 	e = json.Unmarshal(raw, &v)
 	return v, e
 }
-func (b *Backend) GetAuthorization(data, owner, recipient string) (domain.AuthorizationRecord, error) {
+func (b *Backend) GetAuthorization(data, recipient string) (domain.AuthorizationRecord, error) {
 	var v domain.AuthorizationRecord
-	raw, e := b.contract.EvaluateTransaction("GetAuthorization", data, owner, recipient)
+	raw, e := b.contract.EvaluateTransaction("GetAuthorization", data, recipient)
 	if e != nil {
 		if strings.Contains(e.Error(), "not found") {
 			return v, domain.ErrNotFound

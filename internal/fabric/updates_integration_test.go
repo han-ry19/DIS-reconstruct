@@ -144,7 +144,7 @@ func TestLiveFabricManagementUpdates(t *testing.T) {
 	submit("authorization.update", ownerID, domain.Parameters{DataID: dataID, Recipient: appID, Field: "recipient", NewContent: otherID})
 	waitDNS(authName(appID), mdns.TypeTXT, func(rrs []mdns.RR) bool { return len(rrs) == 0 })
 	waitDNS(authName(otherID), mdns.TypeTXT, authMatches(otherID, domain.AuthorizationApproved, 2))
-	if _, e = backend.GetAuthorization(dataID, ownerID, appID); !errors.Is(e, domain.ErrNotFound) {
+	if _, e = backend.GetAuthorization(dataID, appID); !errors.Is(e, domain.ErrNotFound) {
 		t.Fatal("old recipient remains in ledger", e)
 	}
 	submit("data.update", ownerID, domain.Parameters{DataID: dataID, Field: "RP", NewContent: nextID})

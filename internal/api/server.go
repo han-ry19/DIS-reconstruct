@@ -133,10 +133,10 @@ func (s *Server) data(w http.ResponseWriter, r *http.Request) {
 }
 func (s *Server) authorization(w http.ResponseWriter, r *http.Request) {
 	if reader, ok := s.Store.(interface {
-		GetAuthorization(string, string, string) (domain.AuthorizationRecord, error)
+		GetAuthorization(string, string) (domain.AuthorizationRecord, error)
 	}); ok {
 		q := r.URL.Query()
-		v, e := reader.GetAuthorization(q.Get("data_id"), q.Get("owner_id"), q.Get("recipient"))
+		v, e := reader.GetAuthorization(q.Get("data_id"), q.Get("recipient"))
 		if e != nil {
 			problem(w, e)
 			return
@@ -150,7 +150,7 @@ func (s *Server) authorization(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := r.URL.Query()
-	v, ok := state.Authorizations[domain.AuthorizationKey(q.Get("data_id"), q.Get("owner_id"), q.Get("recipient"))]
+	_, v, ok := domain.FindAuthorization(state, q.Get("data_id"), q.Get("recipient"))
 	if !ok {
 		problem(w, domain.ErrNotFound)
 		return

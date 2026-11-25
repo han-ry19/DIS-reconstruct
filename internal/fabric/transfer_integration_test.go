@@ -60,7 +60,7 @@ func TestLiveFabricPendingTransferAndColdRecovery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	must("data.register", users[0], domain.Parameters{DataID: data, Profile:&domain.DataProfile{Label:"transfer"}, Address: "https://example.org/pending", DataSignature: base64.StdEncoding.EncodeToString(ed25519.Sign(keys[users[0]], []byte("data")))})
+	must("data.register", users[0], domain.Parameters{DataID: data, Profile: &domain.DataProfile{Label: "transfer"}, Address: "https://example.org/pending", DataSignature: base64.StdEncoding.EncodeToString(ed25519.Sign(keys[users[0]], []byte("data")))})
 	must("authorization.request", users[2], domain.Parameters{DataID: data, Recipient: users[2], Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600})
 	must("data.update", users[0], domain.Parameters{DataID: data, Field: "RP", NewContent: users[1]})
 	decision := domain.Parameters{DataID: data, Recipient: users[2], Status: domain.AuthorizationApproved}
@@ -68,8 +68,8 @@ func TestLiveFabricPendingTransferAndColdRecovery(t *testing.T) {
 		t.Fatal("former owner decision", err)
 	}
 	must("authorization.decide", users[1], decision)
-	a, err := b.GetAuthorization(data, users[0], users[2])
-	if err != nil || a.Status != domain.AuthorizationApproved || a.IssuedAt <= 0 {
+	a, err := b.GetAuthorization(data, users[2])
+	if err != nil || a.OwnerID != users[0] || a.Status != domain.AuthorizationApproved || a.IssuedAt <= 0 {
 		t.Fatal(a, err)
 	}
 	current, err := b.View()

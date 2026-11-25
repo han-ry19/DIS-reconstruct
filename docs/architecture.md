@@ -36,3 +36,5 @@ A successful API write confirms a valid Fabric commit. DNS publication completes
 ## Deployment
 
 Fabric peers, orderers, and colocated chaincode processes can be placed across machines. The API, publisher, Redis, and CoreDNS run on the controller. [config.yaml](../config.yaml) and [run.sh](../run.sh) provide the deployment entry point. See [configuration](../config/README.md) and [multi-machine deployment](experiment-deployment.md).
+
+Serving readiness loads the persisted checkpoint and current projection, then compares authoritative AXFR answers. It does not replay Fabric history or assert channel-head freshness. dis-audit performs an explicit full-history comparison at a captured height. The event count used for SOA serials is persisted in the checkpoint and reused on ordinary restarts.

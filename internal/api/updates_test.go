@@ -84,13 +84,18 @@ func TestManagementUpdatesThroughHTTPAndRecovery(t *testing.T) {
 	submit("data.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Field: "RP", NewContent: "bob.uid"}, 200)
 	submit("authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "other.uid", Field: "status", NewContent: "rejected"}, 403)
 	last := submit("authorization.update", "bob.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "other.uid", Field: "status", NewContent: "rejected"}, 200)
-	oldRoute := "/v1/authorizations?data_id=e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data&owner_id=alice.uid&recipient=app.uid"
-	route := "/v1/authorizations?data_id=e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data&owner_id=alice.uid&recipient=other.uid"
+	oldRoute := "/v1/authorizations?data_id=e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data&recipient=app.uid"
+	route := "/v1/authorizations?data_id=e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data&recipient=other.uid"
 	get(oldRoute, 404, nil)
 	var a domain.AuthorizationRecord
 	get(route, 200, &a)
-	if a.Status != domain.AuthorizationRejected || a.Recipient != "other.uid" || len(a.Permissions) != 2 {
+	if a.OwnerID != "alice.uid" || a.Status != domain.AuthorizationRejected || a.Recipient != "other.uid" || len(a.Permissions) != 2 {
 		t.Fatal(a)
+	}
+	// Legacy owner_id input is ignored: ownership transfer does not change lookup identity.
+	get(route+"&owner_id=bob.uid", 200, &a)
+	if a.OwnerID != "alice.uid" {
+		t.Fatal("query lost original issuer", a)
 	}
 	var d domain.DataIdentifier
 	get("/v1/data/e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", 200, &d)

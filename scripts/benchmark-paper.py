@@ -60,8 +60,8 @@ def main():
     network = load()
     if args.kind == 'dns':
         services = json.loads((RUNTIME/'services/services.json').read_text())
-        command([ROOT/'bin/dis-sync', '-fabric-config', WORK/'gateway.json', '-redis', f"127.0.0.1:{services['redis_port']}",
-                 '-check', '-verify', f"127.0.0.1:{services['dns_port']}"], timeout=180)
+        command([ROOT/'bin/dis-sync', '-redis', f"127.0.0.1:{services['redis_port']}",
+                 '-check', '-verify', f"127.0.0.1:{services['dns_port']}", '-ns-address', services.get('ns_address', '127.0.0.1')], timeout=180)
     environment = dict(topology=network['topology'], platform=platform.platform(), cpu_count=os.cpu_count(),
                        cpu_info=Path('/proc/cpuinfo').read_text(), memory_info=Path('/proc/meminfo').read_text(),
                        source_revision=command(['git', '-C', ROOT, 'rev-parse', 'HEAD']).stdout.strip(),

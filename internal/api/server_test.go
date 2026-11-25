@@ -97,7 +97,7 @@ func TestRegistrationAuthorizationAndRecovery(t *testing.T) {
 	submit(request, 200)
 	fetchAuth := func() domain.AuthorizationRecord {
 		t.Helper()
-		resp, e := http.Get(server.URL + "/v1/authorizations?data_id=54ab7e6b-4783-4ad8-818a-86654a76222b.data&owner_id=alice.uid&recipient=app.uid")
+		resp, e := http.Get(server.URL + "/v1/authorizations?data_id=54ab7e6b-4783-4ad8-818a-86654a76222b.data&recipient=app.uid")
 		if e != nil {
 			t.Fatal(e)
 		}

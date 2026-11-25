@@ -98,7 +98,7 @@ func run() error {
 	if e = send("authorization.decide", ownerID, domain.Parameters{DataID: dataID, Recipient: appID, Status: domain.AuthorizationApproved}, owner); e != nil {
 		return e
 	}
-	response, e := client.Get(*endpoint + "/v1/authorizations?data_id=" + dataID + "&owner_id=" + ownerID + "&recipient=" + appID)
+	response, e := client.Get(*endpoint + "/v1/authorizations?data_id=" + dataID + "&recipient=" + appID)
 	if e != nil {
 		return e
 	}

@@ -66,10 +66,9 @@ paths:
     get:
       parameters:
         - {name: data_id, in: query, required: true, schema: {type: string}}
-        - {name: owner_id, in: query, required: true, schema: {type: string}}
         - {name: recipient, in: query, required: true, schema: {type: string}}
       responses:
-        '200': {description: Authorization record}
+        '200': {description: Authorization selected by data identifier and recipient; owner_id in the returned record retains the original issuer.}
         '404': {description: Authorization not found}
 components:
   schemas:

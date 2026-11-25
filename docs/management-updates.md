@@ -115,3 +115,5 @@ DIS_FABRIC_CONFIG="$DIS_RUNTIME/fabric/gateway.json" go test ./internal/fabric -
 ~~~
 
 It covers four recipients of one data object for requests, decisions, and updates. Separate cases verify MVCC rejection of conflicting same-authorization updates and an operation endorsed before an ownership transfer.
+
+Authorization lookup uses GET /v1/authorizations?data_id=ID&recipient=APP and the two-argument chaincode query GetAuthorization(dataID, recipient). The original issuer in owner_id is response metadata, not a lookup filter. Existing HTTP clients may continue sending owner_id; it is ignored.

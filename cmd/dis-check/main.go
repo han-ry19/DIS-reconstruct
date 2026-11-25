@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -32,10 +31,10 @@ func main() {
 		}
 		time.Sleep(300 * time.Millisecond)
 	}
-	state, _, e := b.Rebuild(context.Background())
+	name, e := b.Domain()
 	if e != nil {
 		fmt.Fprintln(os.Stderr, e)
 		os.Exit(1)
 	}
-	json.NewEncoder(os.Stdout).Encode(map[string]any{"status": "ready", "sequence": state.Sequence, "domain": state.Domain})
+	json.NewEncoder(os.Stdout).Encode(map[string]any{"status": "ready", "domain": name})
 }

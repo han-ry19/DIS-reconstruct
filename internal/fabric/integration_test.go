@@ -99,7 +99,7 @@ func TestLiveFabricWorkflow(t *testing.T) {
 		t.Fatal(e)
 	}
 	record := got.Authorizations[domain.AuthorizationKey(dataID, ownerID, appID)]
-	direct, e := backend.GetAuthorization(dataID, ownerID, appID)
+	direct, e := backend.GetAuthorization(dataID, appID)
 	if e != nil || !reflect.DeepEqual(direct, record) {
 		t.Fatalf("direct authorization query: %v %v", direct, e)
 	}

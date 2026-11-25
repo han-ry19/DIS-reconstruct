@@ -17,18 +17,21 @@ def main():
    time.sleep(.1)
   args=[ROOT/'bin/dis-sync','-fabric-config',WORK/'gateway.json','-redis',f'127.0.0.1:{m["redis_port"]}','-out',RUNTIME/'dns','-ns-address',m.get('ns_address','127.0.0.1')]
   def check():return subprocess.run([str(v) for v in args]+['-check','-verify',f'127.0.0.1:{m["dns_port"]}'],capture_output=True,text=True)
+  audit=[ROOT/'bin/dis-audit','-fabric-config',WORK/'gateway.json','-redis',f'127.0.0.1:{m["redis_port"]}']
+  def audited():return subprocess.run([str(v) for v in audit],capture_output=True,text=True)
   try:
    subprocess.run([str(ROOT/'bin/dis-demo'),'-url',f'http://127.0.0.1:{m["api_port"]}','-domain',load()['topology']['domain']],check=True,capture_output=True,text=True)
-   if check().returncode==0:raise RuntimeError('Projection changed while publisher was stopped')
+   if check().returncode!=0:raise RuntimeError('Consistent serving projection failed readiness')
+   if audited().returncode==0:raise RuntimeError('Audit failed to detect unpublished commits')
   finally:
    output=(servicesdir/'sync.log').open('ab');p=subprocess.Popen([str(v) for v in args],stdout=output,stderr=output,start_new_session=True);output.close()
    m['processes']['sync']={'pid':p.pid,'start':stamp(p.pid)};path.write_text(json.dumps(m,indent=2))
   deadline=time.monotonic()+30
   while True:
-   result=check()
-   if result.returncode==0:break
+   result=audited()
+   if result.returncode==0 and check().returncode==0:break
    if not live(m['processes']['sync']) or time.monotonic()>deadline:raise RuntimeError(result.stderr)
    time.sleep(.2)
-  report={'offline_commits':'passed','checkpoint_catch_up':'passed','authoritative_dns':'passed'}
+  report={'readiness_independent_of_catch_up':'passed','stale_projection_audit':'passed','offline_commits':'passed','checkpoint_catch_up':'passed','authoritative_dns':'passed'}
   (RUNTIME/'acceptance-events.json').write_text(json.dumps(report,indent=2));print(json.dumps(report,indent=2))
 if __name__=='__main__':main()

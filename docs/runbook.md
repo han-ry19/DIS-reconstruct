@@ -34,11 +34,22 @@ For another deployment, pass --config PATH to each command. See the [configurati
 
 ~~~bash
 bin/dis-demo -url http://127.0.0.1:38080
-bin/dis-sync -fabric-config runtime/configured/fabric/gateway.json \
+bin/dis-sync \
   -redis 127.0.0.1:38679 -check -verify 127.0.0.1:38530
 ~~~
 
-The demo registers a user and application, registers data, requests Read access, records the owner's approval, and queries the resulting authorization. Each run generates fresh identifiers. The check command compares Redis and both complete authoritative DNS zones with the committed ledger state. Adjust addresses and paths when using a different configuration.
+The demo registers a user and application, registers data, requests Read access, records the owner's approval, and queries the resulting authorization. Each run generates fresh identifiers. The check command verifies the Redis checkpoint and compares both complete authoritative DNS zones with the cached projection. It reads no Fabric history and does not establish catch-up to the channel head. Its cost depends on current records, rather than past transactions. Adjust addresses and paths when using a different configuration.
+
+## Audit committed history
+
+To compare the serving projection with committed history, pause management writes, let the publisher catch up, then run:
+
+~~~bash
+bin/dis-audit -fabric-config runtime/configured/fabric/gateway.json \
+  -redis 127.0.0.1:38679 -verify 127.0.0.1:38530
+~~~
+
+The audit replays valid events from genesis to a captured channel height and compares the resulting state with Redis. Its default timeout is 30 minutes; set -timeout for longer histories. With concurrent writes the two captured boundaries can differ; rerun after writes stop. Startup and DNS benchmark readiness do not run this audit. Pass -ns-address when using a non-default advertised nameserver address.
 
 ## Sign and submit a request
 

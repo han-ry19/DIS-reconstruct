@@ -61,4 +61,14 @@ Use the same checks for each topology selected in [deployment](experiment-deploy
 
 The regression suite checks that a new owner can decide a pre-transfer pending request, the former owner is rejected, and the decision sets issued_at. It also checks first-time status updates of pending requests. The live Fabric regression is TestLiveFabricPendingTransferAndColdRecovery in internal/fabric/transfer_integration_test.go. Its cold replay is compared with the current ledger objects, including a history containing invalidated transactions.
 
-GetSnapshot is tested with additional malformed receipt entries to ensure it neither reads nor returns request history. Recovery parsing tests distinguish valid DIS events, invalid transactions, and other chaincodes. Redis integration tests verify atomic records/checkpoint persistence, recovery, recipient moves, and rejection of conflicting or older publications. Configuration tests cover advertised nameserver addresses, while HTTP tests distinguish business conflict and retryable ledger-conflict responses.
+GetSnapshot is tested with additional malformed receipt entries to ensure it neither reads nor returns request history. Recovery parsing tests distinguish valid DIS events, invalid transactions, and other chaincodes. Redis integration tests verify atomic records/checkpoint persistence, recovery, recipient moves, rejection of conflicting or older publications, missing-checkpoint rejection, and matching versus stale authoritative AXFR answers. Configuration tests cover advertised nameserver addresses, while HTTP tests distinguish business conflict and retryable ledger-conflict responses.
+
+## Serving readiness and history audit
+
+dis-check verifies Gateway connectivity, the configured domain, and endorsement using GetDomain. dis-sync -check -redis ADDRESS -verify DNS_ADDRESS verifies the persistent Redis checkpoint and full authoritative zones against the cached current records. It opens no Fabric connection and does not prove that the publisher has reached the channel head.
+
+dis-audit -fabric-config PROFILE -redis ADDRESS -verify DNS_ADDRESS explicitly replays committed history and compares it with the serving projection. Pause management writes and allow catch-up before auditing. Audit duration grows with chain history; readiness depends on current records only. Empty-cache recovery still requires history replay. The event acceptance test checks that a consistent old projection passes readiness while this audit detects unpublished commits, then verifies catch-up after the publisher restarts.
+
+Authorization point queries take data_id and recipient. Transfer tests verify that queries succeed after ownership transfer while the response retains the original issuer in owner_id.
+
+GetSnapshot remains available as a Fabric query for diagnostics and pre/post benchmark inspection. It scans current business state; it is not used by startup, serving readiness, or endorsement checks.

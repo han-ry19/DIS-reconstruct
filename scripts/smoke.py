@@ -31,7 +31,7 @@ with tempfile.TemporaryDirectory(prefix='dis-smoke-') as directory:
         req=urllib.request.Request(url+'/v1/transactions',data=signed,headers={'Content-Type':'application/json'})
         with urllib.request.urlopen(req) as response:assert response.status==200
         process.terminate();process.wait(timeout=5);process=start()
-        query=url+'/v1/authorizations?data_id='+record['data_id']+'&owner_id='+record['owner_id']+'&recipient='+record['recipient']
+        query=url+'/v1/authorizations?data_id='+record['data_id']+'&recipient='+record['recipient']
         with urllib.request.urlopen(query) as response:assert json.load(response)==record
         with urllib.request.urlopen(url+'/v1/identities/cli-user.uid') as response:assert json.load(response)['public_key']==public
         print('PASS: independent API process, signed demo, CLI key generation and submission, restart and record lookup')

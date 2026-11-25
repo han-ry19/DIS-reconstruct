@@ -144,12 +144,12 @@ func TestManagementLedgerAndIndexes(t *testing.T) {
 	h.submit("data.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Field: "TXT", NewContent: base64.StdEncoding.EncodeToString(ed25519.Sign(h.keys["alice.uid"], []byte("changed payload")))}, true)
 	h.submit("authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Field: "permissions", NewContent: "[\"Read\",\"Update\"]"}, true)
 	h.submit("authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Field: "recipient", NewContent: "other.uid"}, true)
-	old := h.stub.MockInvoke("old", [][]byte{[]byte("GetAuthorization"), []byte("e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data"), []byte("alice.uid"), []byte("app.uid")})
+	old := h.stub.MockInvoke("old", [][]byte{[]byte("GetAuthorization"), []byte("e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data"), []byte("app.uid")})
 	if old.Status == 200 {
 		t.Fatal("old recipient still in ledger")
 	}
 	var changed domain.AuthorizationRecord
-	json.Unmarshal(h.query("GetAuthorization", "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", "alice.uid", "other.uid"), &changed)
+	json.Unmarshal(h.query("GetAuthorization", "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", "other.uid"), &changed)
 	if !reflect.DeepEqual(changed.Permissions, []string{"Read", "Update"}) {
 		t.Fatal(changed)
 	}
@@ -211,7 +211,7 @@ func TestPendingUpdateAndCollision(t *testing.T) {
 	h.submit("authorization.request", "app.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}, true)
 	h.submit("authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Field: "recipient", NewContent: "other.uid"}, true)
 	var a domain.AuthorizationRecord
-	json.Unmarshal(h.query("GetAuthorization", "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", "alice.uid", "other.uid"), &a)
+	json.Unmarshal(h.query("GetAuthorization", "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", "other.uid"), &a)
 	if a.Status != domain.AuthorizationPending {
 		t.Fatal(a)
 	}
@@ -220,7 +220,7 @@ func TestPendingUpdateAndCollision(t *testing.T) {
 	h.submit("authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "other.uid", Field: "recipient", NewContent: "app.uid"}, false)
 	// Moving back removes the pending key too; no old pending entry survives.
 	h.submit("authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Field: "status", NewContent: "rejected"}, true)
-	json.Unmarshal(h.query("GetAuthorization", "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", "alice.uid", "app.uid"), &a)
+	json.Unmarshal(h.query("GetAuthorization", "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", "app.uid"), &a)
 	if a.Status != domain.AuthorizationRejected || a.IssuedAt == 0 {
 		t.Fatal("pending status update missing decision time", a)
 	}
@@ -252,7 +252,7 @@ func TestPendingDecisionAfterOwnershipTransfer(t *testing.T) {
 			h.submit(op, "alice.uid", params, false)
 			h.submit(op, "bob.uid", params, true)
 			var a domain.AuthorizationRecord
-			json.Unmarshal(h.query("GetAuthorization", data, "alice.uid", "app.uid"), &a)
+			json.Unmarshal(h.query("GetAuthorization", data, "app.uid"), &a)
 			if a.Status != domain.AuthorizationApproved || a.IssuedAt <= 0 || a.OwnerID != "alice.uid" {
 				t.Fatal(a)
 			}

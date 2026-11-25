@@ -27,14 +27,14 @@ def main():
     print(demo)
 
     def verify():
-        query = api + '/v1/authorizations?data_id=' + record['data_id'] + '&owner_id=' + record['owner_id'] + '&recipient=' + record['recipient']
+        query = api + '/v1/authorizations?data_id=' + record['data_id'] + '&recipient=' + record['recipient']
         with urllib.request.urlopen(query, timeout=15) as response:
             assert json.load(response) == record
         for node in network['peers']:
             deadline = time.monotonic() + 30
             while True:
                 try:
-                    body = run([BIN / 'peer', 'chaincode', 'query', '-C', 'dis', '-n', 'dis', '-c', json.dumps({'Args': ['GetAuthorization', record['data_id'], record['owner_id'], record['recipient']]})], clientenv(node['org'], node['peer']))
+                    body = run([BIN / 'peer', 'chaincode', 'query', '-C', 'dis', '-n', 'dis', '-c', json.dumps({'Args': ['GetAuthorization', record['data_id'], record['recipient']]})], clientenv(node['org'], node['peer']))
                     assert json.loads(body) == record
                     break
                 except (RuntimeError, AssertionError):
@@ -44,7 +44,7 @@ def main():
         deadline = time.monotonic() + 30
         while True:
             try:
-                command([ROOT / 'bin/dis-sync', '-fabric-config', WORK / 'gateway.json', '-redis', f'127.0.0.1:{services["redis_port"]}', '-check', '-verify', dns, '-ns-address', services.get('ns_address','127.0.0.1')])
+                command([ROOT / 'bin/dis-sync', '-redis', f'127.0.0.1:{services["redis_port"]}', '-check', '-verify', dns, '-ns-address', services.get('ns_address','127.0.0.1')])
                 break
             except subprocess.CalledProcessError:
                 if time.monotonic() > deadline:
@@ -52,6 +52,17 @@ def main():
                 time.sleep(.2)
 
     verify()
+    # This explicit audit establishes catch-up; readiness alone checks serving consistency.
+    audit = [ROOT / 'bin/dis-audit', '-fabric-config', WORK / 'gateway.json', '-redis', f'127.0.0.1:{services["redis_port"]}', '-verify', dns, '-ns-address', services.get('ns_address', '127.0.0.1')]
+    deadline = time.monotonic() + 30
+    while True:
+        try:
+            command(audit)
+            break
+        except subprocess.CalledProcessError:
+            if time.monotonic() > deadline:
+                raise
+            time.sleep(.2)
     if args.all_gateways:
         profiles = WORK / 'acceptance-gateways'
         profiles.mkdir(exist_ok=True)
@@ -69,19 +80,20 @@ def main():
             for node in network['peers']:
                 if node['peer'] == j:
                     flags += ['--peerAddresses', endpoint(network, node), '--tlsRootCertFiles', peerpath(node['org'], j) / 'tls/ca.crt']
-            run([BIN / 'peer', 'chaincode', 'invoke', '-C', 'dis', '-n', 'dis', '-c', json.dumps({'Args': ['GetSnapshot']}), '--waitForEvent'] + orderflags(network) + flags, clientenv(0))
+            run([BIN / 'peer', 'chaincode', 'invoke', '-C', 'dis', '-n', 'dis', '-c', json.dumps({'Args': ['GetDomain']}), '--waitForEvent'] + orderflags(network) + flags, clientenv(0))
     if args.restart:
         for script, action in [('services.py', 'down'), ('network.py', 'down'), ('network.py', 'up'), ('services.py', 'up')]:
             command(['python3', ROOT / 'scripts' / script, action])
         verify()
     replay = json.loads(transcript.read_text())
-    before = json.loads(command([ROOT / 'bin/dis-check', '-fabric-config', WORK / 'gateway.json']))['sequence']
+    before = json.loads(command([ROOT / 'bin/dis-sync', '-redis', f'127.0.0.1:{services["redis_port"]}', '-check']))['sequence']
     for step in replay:
         request = urllib.request.Request(api + '/v1/transactions', data=json.dumps(step['request']).encode(), headers={'Content-Type': 'application/json'})
         with urllib.request.urlopen(request, timeout=30) as response:
             assert json.load(response) == step['result']
-    after = json.loads(command([ROOT / 'bin/dis-check', '-fabric-config', WORK / 'gateway.json']))['sequence']
+    after = json.loads(command([ROOT / 'bin/dis-sync', '-redis', f'127.0.0.1:{services["redis_port"]}', '-check']))['sequence']
     assert before == after
+    command(audit)
     report = dict(committed_event_publication='passed', workflow='passed', exact_replay='passed', all_peer_queries='passed',
                   all_gateways='passed' if args.all_gateways else 'not-requested', replica_endorsement='passed' if args.all_gateways else 'not-requested',
                   organizations=network['topology']['organizations'], peer_count=len(network['peers']), orderer_count=len(network['orderers']),

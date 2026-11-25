@@ -39,10 +39,27 @@ func main() {
 	bootstrap := flag.Bool("bootstrap", false, "Reuse a persistent projection or rebuild it when absent")
 	once := flag.Bool("once", false, "Recover and publish committed state once, then exit")
 	verify := flag.String("verify", "", "Authoritative DNS address for complete AXFR verification")
-	check := flag.Bool("check", false, "Verify Redis and authoritative DNS against Fabric without publishing")
+	check := flag.Bool("check", false, "Check the Redis checkpoint and authoritative DNS without reading Fabric history")
 	flag.Parse()
 	if *interval <= 0 {
 		log.Fatal("interval must be positive")
+	}
+	if *check {
+		if *address == "" {
+			log.Fatal("check requires -redis")
+		}
+		deadline := time.Now().Add(60 * time.Second)
+		for {
+			p, e := dns.CheckProjection(*address, *verify, *nsAddress)
+			if e == nil {
+				json.NewEncoder(os.Stdout).Encode(map[string]any{"status": "ready", "domain": p.State.Domain, "sequence": p.State.Sequence, "block": p.Block, "transaction": p.Transaction})
+				return
+			}
+			if time.Now().After(deadline) {
+				log.Fatal(e)
+			}
+			time.Sleep(200 * time.Millisecond)
+		}
 	}
 	var view func() (domain.State, error)
 	var b *fabric.Backend
@@ -93,32 +110,6 @@ func main() {
 		return nil
 	}
 
-	if *check {
-		if *address == "" {
-			log.Fatal("check requires -redis")
-		}
-		s, e := view()
-		if e != nil {
-			log.Fatal(e)
-		}
-		p, ok, e := dns.LoadProjection(*address)
-		if e != nil {
-			log.Fatal(e)
-		}
-		if !ok {
-			log.Fatal("missing Redis projection")
-		}
-		expected, _ := dns.Digest(s)
-		actual, _ := dns.Digest(p.State)
-		if expected != actual {
-			log.Fatal("Redis projection does not match committed state")
-		}
-		if e = verifyState(s, *verify, *nsAddress); e != nil {
-			log.Fatal(e)
-		}
-		log.Printf("verified event projection sequence %d", s.Sequence)
-		return
-	}
 	if *bootstrap {
 		if b == nil || *address == "" {
 			log.Fatal("bootstrap requires -fabric-config and -redis")

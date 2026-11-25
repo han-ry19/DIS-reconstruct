@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"github.com/gomodule/redigo/redis"
 	"github.com/han-ry19/DIS-reconstruct/internal/domain"
+	mdns "github.com/miekg/dns"
+	"net"
 	"os"
 	"testing"
 )
@@ -23,10 +25,21 @@ func TestLiveRedisProjectionRecovery(t *testing.T) {
 	if _, e = c.Do("DEL", keys...); e != nil {
 		t.Fatal(e)
 	}
+	if _, err := CheckProjection(address, ""); err == nil {
+		t.Fatal("missing checkpoint passed readiness")
+	}
 	s := fixture()
 	p := ProjectionCheckpoint{State: s, Block: 10, Transaction: "first"}
 	if e = SaveProjection(address, p, true); e != nil {
 		t.Fatal(e)
+	}
+	checked, err := CheckProjection(address, "")
+	if err != nil || checked.Block != p.Block || checked.Transaction != p.Transaction || checked.State.Sequence != s.Sequence {
+		t.Fatal("cached projection failed readiness", checked, err)
+	}
+	metadataOnly, exists, err := LoadCheckpoint(address)
+	if err != nil || !exists || metadataOnly.Block != p.Block || metadataOnly.State.Identities != nil {
+		t.Fatal("checkpoint read scanned business state", metadataOnly, err)
 	}
 	recovered, ok, e := LoadProjection(address)
 	if e != nil || !ok {
@@ -71,6 +84,58 @@ func TestLiveRedisProjectionRecovery(t *testing.T) {
 	stale.State.Sequence--
 	if e = SaveProjection(address, stale, true); e == nil {
 		t.Fatal("stale publication accepted")
+	}
+	// A matching AXFR passes; a consistent but stale DNS server must fail after publication advances.
+	zones, err := Project(p.State)
+	if err != nil {
+		t.Fatal(err)
+	}
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := &mdns.Server{Listener: listener, Handler: mdns.HandlerFunc(func(w mdns.ResponseWriter, request *mdns.Msg) {
+		records := zones[request.Question[0].Name]
+		if len(records) == 0 {
+			return
+		}
+		var soa mdns.RR
+		for _, rr := range records {
+			if rr.Header().Rrtype == mdns.TypeSOA {
+				soa = rr
+				break
+			}
+		}
+		ordered := []mdns.RR{soa}
+		for _, rr := range records {
+			if rr.Header().Rrtype != mdns.TypeSOA {
+				ordered = append(ordered, rr)
+			}
+		}
+		ordered = append(ordered, soa)
+		envelopes := make(chan *mdns.Envelope, 1)
+		envelopes <- &mdns.Envelope{RR: ordered}
+		close(envelopes)
+		if err := new(mdns.Transfer).Out(w, request, envelopes); err != nil {
+			t.Error(err)
+		}
+	})}
+	started := make(chan struct{})
+	server.NotifyStartedFunc = func() { close(started) }
+	go server.ActivateAndServe()
+	<-started
+	defer server.Shutdown()
+	if _, err := CheckProjection(address, listener.Addr().String()); err != nil {
+		t.Fatal(err)
+	}
+	p.State.Sequence++
+	p.Block++
+	p.Change = nil
+	if err := SaveProjection(address, p, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := CheckProjection(address, listener.Addr().String()); err == nil {
+		t.Fatal("stale authoritative DNS passed readiness")
 	}
 	p.Change = nil
 	p.Transaction = "second"
