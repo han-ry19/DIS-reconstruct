@@ -1,6 +1,6 @@
 # DIS-reconstruct
 
-This project reconstructs the DNS identifier registration, management, authorization, and resolution components described in Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership and Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications, following the papers and their source code.
+This project reconstructs the DNS identifier registration, management, authorization, and resolution components described in [Data Interoperating Architecture (DIA): Decoupling Data and Applications to Give Back Your Data Ownership](https://ieeexplore.ieee.org/document/10197025) and [Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications](https://link.springer.com/article/10.1007/s11280-025-01337-z), following the papers and their source code.
 
 ## System design
 
