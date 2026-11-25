@@ -72,20 +72,20 @@ func TestManagementUpdatesThroughHTTPAndRecovery(t *testing.T) {
 		}
 		submit("identity.register", id, domain.Parameters{IdentityID: id, Kind: kind, PublicKey: base64.StdEncoding.EncodeToString(k.Public().(ed25519.PublicKey))}, 200)
 	}
-	submit("data.register", "alice.uid", domain.Parameters{DataID: "item.data", Address: "https://example.org/old", DataSignature: base64.StdEncoding.EncodeToString(make([]byte, 64)), Profile: &domain.DataProfile{}}, 200)
-	submit("authorization.request", "app.uid", domain.Parameters{DataID: "item.data", Recipient: "app.uid", Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}, 200)
-	submit("authorization.decide", "alice.uid", domain.Parameters{DataID: "item.data", Recipient: "app.uid", Status: domain.AuthorizationApproved}, 200)
-	submit("data.update", "app.uid", domain.Parameters{DataID: "item.data", Field: "URI", NewContent: "https://example.org/new"}, 403)
-	submit("data.update", "alice.uid", domain.Parameters{DataID: "item.data", Field: "URI", NewContent: "relative"}, 400)
+	submit("data.register", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Address: "https://example.org/old", DataSignature: base64.StdEncoding.EncodeToString(make([]byte, 64)), Profile: &domain.DataProfile{}}, 200)
+	submit("authorization.request", "app.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}, 200)
+	submit("authorization.decide", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Status: domain.AuthorizationApproved}, 200)
+	submit("data.update", "app.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Field: "URI", NewContent: "https://example.org/new"}, 403)
+	submit("data.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Field: "URI", NewContent: "relative"}, 400)
 	submit("data.update", "alice.uid", domain.Parameters{DataID: "missing.data", Field: "URI", NewContent: "https://example.org/new"}, 404)
-	submit("data.update", "alice.uid", domain.Parameters{DataID: "item.data", Field: "URI", NewContent: "https://example.org/new"}, 200)
-	submit("authorization.update", "alice.uid", domain.Parameters{DataID: "item.data", Recipient: "app.uid", Field: "permissions", NewContent: "[\"Read\",\"Update\"]"}, 200)
-	submit("authorization.update", "alice.uid", domain.Parameters{DataID: "item.data", Recipient: "app.uid", Field: "recipient", NewContent: "other.uid"}, 200)
-	submit("data.update", "alice.uid", domain.Parameters{DataID: "item.data", Field: "RP", NewContent: "bob.uid"}, 200)
-	submit("authorization.update", "alice.uid", domain.Parameters{DataID: "item.data", Recipient: "other.uid", AuthorizationOwner: "alice.uid", Field: "status", NewContent: "rejected"}, 403)
-	last := submit("authorization.update", "bob.uid", domain.Parameters{DataID: "item.data", Recipient: "other.uid", AuthorizationOwner: "alice.uid", Field: "status", NewContent: "rejected"}, 200)
-	oldRoute := "/v1/authorizations?data_id=item.data&owner_id=alice.uid&recipient=app.uid"
-	route := "/v1/authorizations?data_id=item.data&owner_id=alice.uid&recipient=other.uid"
+	submit("data.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Field: "URI", NewContent: "https://example.org/new"}, 200)
+	submit("authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Field: "permissions", NewContent: "[\"Read\",\"Update\"]"}, 200)
+	submit("authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Field: "recipient", NewContent: "other.uid"}, 200)
+	submit("data.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Field: "RP", NewContent: "bob.uid"}, 200)
+	submit("authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "other.uid", AuthorizationOwner: "alice.uid", Field: "status", NewContent: "rejected"}, 403)
+	last := submit("authorization.update", "bob.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "other.uid", AuthorizationOwner: "alice.uid", Field: "status", NewContent: "rejected"}, 200)
+	oldRoute := "/v1/authorizations?data_id=e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data&owner_id=alice.uid&recipient=app.uid"
+	route := "/v1/authorizations?data_id=e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data&owner_id=alice.uid&recipient=other.uid"
 	get(oldRoute, 404, nil)
 	var a domain.AuthorizationRecord
 	get(route, 200, &a)
@@ -93,7 +93,7 @@ func TestManagementUpdatesThroughHTTPAndRecovery(t *testing.T) {
 		t.Fatal(a)
 	}
 	var d domain.DataIdentifier
-	get("/v1/data/item.data", 200, &d)
+	get("/v1/data/e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", 200, &d)
 	if d.OwnerID != "bob.uid" || d.Address != "https://example.org/new" {
 		t.Fatal(d)
 	}

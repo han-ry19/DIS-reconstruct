@@ -13,7 +13,7 @@ func TestJavaScriptSigningBytes(t *testing.T) {
 	}
 	cases := []Request{
 		{Domain: "test", Operation: "data.register", Actor: "alice.uid", RequestID: "vector", Timestamp: 1800000000,
-			Parameters: Parameters{DataID: "item.data", Address: "https://example.org/?a=1&b=<two>", Profile: &DataProfile{Label: "中文 😀", Description: "line\n\t\"\\\u2028\u2029"}}},
+			Parameters: Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Address: "https://example.org/?a=1&b=<two>", Profile: &DataProfile{Label: "中文 😀", Description: "line\n\t\"\\\u2028\u2029"}}},
 		{Domain: "test", Operation: "authorization.request", Actor: "app.uid", RequestID: "empty", Timestamp: 1800000000, Parameters: Parameters{Permissions: []string{}, Profile: &DataProfile{}}},
 		{Domain: "test", Operation: "authorization.update", Actor: "alice.uid", RequestID: "perms", Timestamp: 1800000000, Parameters: Parameters{Field: "permissions", NewContent: "[\"Read\",\"Update\"]", ExpiresAt: 1800003600, Permissions: []string{"Read", "Update"}}},
 	}

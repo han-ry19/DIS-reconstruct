@@ -19,9 +19,16 @@ func main() {
 }
 func run() error {
 	if len(os.Args) < 2 {
-		return fmt.Errorf("usage: dis-cli keygen | sign")
+		return fmt.Errorf("usage: dis-cli keygen | data-id | sign")
 	}
 	switch os.Args[1] {
+	case "data-id":
+		id, err := domain.NewDataID()
+		if err != nil {
+			return err
+		}
+		fmt.Println(id)
+		return nil
 	case "keygen":
 		fs := flag.NewFlagSet("keygen", flag.ContinueOnError)
 		out := fs.String("out", "identity.key", "New private-key file")

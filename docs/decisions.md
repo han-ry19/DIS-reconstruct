@@ -2,7 +2,7 @@
 
 ## Signed requests and deterministic execution
 
-Ed25519 signatures bind the deployment domain, operation, actor, request ID, timestamp, and typed parameters. SigningBytes in internal/domain defines the encoding. The JavaScript implementation in benchmarks/caliper/signing.js uses the same field order, omitted values, and JSON escaping; cross-language tests compare the resulting bytes. Clients supply unique data names under .data, bound to the signed request, so every endorsing peer validates the same input.
+Ed25519 signatures bind the deployment domain, operation, actor, request ID, timestamp, and typed parameters. SigningBytes in internal/domain defines the encoding. The JavaScript implementation in benchmarks/caliper/signing.js uses the same field order, omitted values, and JSON escaping; cross-language tests compare the resulting bytes. Clients generate a random UUIDv4 before signing and use its lowercase canonical form followed by .data. The contract validates the version and variant bits, format, and uniqueness, so every endorsing peer validates the same input. Human-readable names belong in profile.label. Existing registered identifiers remain readable and manageable. The contract validates the supplied UUID, not the client’s source of randomness.
 
 Request IDs are scoped to their actor. An exact retry returns the recorded result; changed content with the same ID is rejected. New requests must fall within five minutes of the execution timestamp. The Fabric adapter uses GetTxTimestamp; the file backend uses its execution clock.
 
@@ -18,7 +18,7 @@ The development backend stores an atomic JSON document protected by a single-wri
 
 ## Authorization updates
 
-A newly signed authorization request writes a pending record at the data/recipient key. Reapplication under the same issuer replaces the record according to the existing workflow; a different issuer cannot create a conflicting record at that name. An owner decision sets status and issuance time while retaining the requested permissions and expiration. Field updates follow Algorithms 7–8 of *Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications*. See [management operations](management-updates.md) for ownership transfer, recipient changes, and pending-record behavior.
+A newly signed authorization request writes a pending record at the data/recipient key. Any existing record at that data/recipient name prevents another application request, including pending, approved, rejected, expired, and previous-owner records. A new request returns a conflict without changing the record. The current owner manages status, permissions, recipient, and expiration through authorization.update; an exact retry of the original signed request returns its saved result even after a later owner decision. An owner decision sets status and issuance time while retaining the requested permissions and expiration. Field updates follow Algorithms 7–8 of *Dominate data by yourself: a decentralized scheme for data interoperation when data is decoupled from applications*. See [management operations](management-updates.md) for ownership transfer, recipient changes, and pending-record behavior.
 
 ## DNS publication
 

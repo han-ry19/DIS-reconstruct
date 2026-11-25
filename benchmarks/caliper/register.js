@@ -22,12 +22,15 @@ class RegistrationWorkload extends WorkloadModuleBase {
         this.counter = 0;
         this.samples = [];
         this.registrationRequests = [];
+        this.dataIDs = [];
         // Signing and owner setup are outside the measured transaction window.
         const capacity = Math.ceil(this.roundArguments.rate*this.roundArguments.duration/this.totalWorkers*1.25)+100;
         for (let i=0;i<capacity;i++) {
             const label=this.prefix+'-'+i;
+            const dataID=crypto.randomUUID()+'.data';
+            this.dataIDs.push(dataID);
             this.registrationRequests.push(signedRequest(this.roundArguments.domain,'data.register',this.owner,label,
-                {data_id:label+'.data',address:'https://data.example/benchmark/item',data_signature:this.contentSignature,
+                {data_id:dataID,address:'https://data.example/benchmark/item',data_signature:this.contentSignature,
                  profile:{label:'benchmark',format:'text/plain',description:'Identifier registration workload'}},this.key.privateKey));
         }
     }
@@ -40,7 +43,7 @@ class RegistrationWorkload extends WorkloadModuleBase {
         if (index>=this.registrationRequests.length) throw new Error('Pre-signed request capacity exhausted');
         const status=await this.sutAdapter.sendRequests(this.settings(this.registrationRequests[index]));
         for (const item of (Array.isArray(status)?status:[status])) {
-            this.samples.push({index,object_id:this.prefix+'-'+index+'.data',transaction_id:item.GetID(),
+            this.samples.push({index,object_id:this.dataIDs[index],transaction_id:item.GetID(),
                 status:item.GetStatus(),created:item.GetTimeCreate(),finalized:item.GetTimeFinal(),
                 result:typeof item.GetResult()==='string'?item.GetResult():Buffer.from(item.GetResult() || []).toString()});
         }

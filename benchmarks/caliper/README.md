@@ -48,7 +48,7 @@ export DIS_RUNTIME="$PWD/runtime/experiments/caliper"
 python3 scripts/benchmark-caliper.py --rates 50,100,150,200,250,300,350,400,450 --duration 30 --repetitions 3 --workers 4 --out runtime/benchmarks/caliper-run
 ~~~
 
-Four local workers share one Gateway endpoint, each using a separate application owner. The offered rate is the aggregate across workers. Identifiers are unique and requests use the same signed registration fields as the Go workload. The runner generates its network configuration from the deployment's Gateway profile and randomizes round order using a fixed seed.
+Four local workers share one Gateway endpoint, each using a separate application owner. The offered rate is the aggregate across workers. Identifiers are generated with crypto.randomUUID() before signing and use the same UUIDv4.data format and signed registration fields as the Go workload. The runner generates its network configuration from the deployment's Gateway profile and randomizes round order using a fixed seed.
 
 Run workloads sequentially and choose a new output directory for each run. To compare Gateway limits, use a separate configuration and runtime with gateway_concurrency set to 2500. Keep worker count, rates, round duration, endorsement, block settings, and hardware placement fixed.
 

@@ -66,7 +66,7 @@ func TestRegistrationAuthorizationAndRecovery(t *testing.T) {
 	submit(ownerRegistration, 200)
 	submit(makeReq("identity.register", "app.uid", "app", domain.Parameters{IdentityID: "app.uid", PublicKey: base64.StdEncoding.EncodeToString(appPub), Kind: "application"}, app), 200)
 	dataSig := base64.StdEncoding.EncodeToString(ed25519.Sign(owner, []byte("data payload")))
-	registration := makeReq("data.register", "alice.uid", "data", domain.Parameters{DataID: "sample.data", Address: "https://data.example/item", DataSignature: dataSig, Profile: &domain.DataProfile{Label: "sample", Format: "text", Description: "Example data"}}, owner)
+	registration := makeReq("data.register", "alice.uid", "data", domain.Parameters{DataID: "54ab7e6b-4783-4ad8-818a-86654a76222b.data", Address: "https://data.example/item", DataSignature: dataSig, Profile: &domain.DataProfile{Label: "sample", Format: "text", Description: "Example data"}}, owner)
 	result := submit(registration, 200)
 	if replay := submit(registration, 200); replay != result {
 		t.Fatal("replay changed result")
@@ -91,13 +91,13 @@ func TestRegistrationAuthorizationAndRecovery(t *testing.T) {
 	expired.Timestamp = now - 1000
 	domain.Sign(&expired, owner)
 	submit(expired, 400)
-	badPermissions := makeReq("authorization.request", "app.uid", "bad-permissions", domain.Parameters{DataID: "sample.data", Recipient: "app.uid", Permissions: []string{"Root"}, ExpiresAt: now + 3600}, app)
+	badPermissions := makeReq("authorization.request", "app.uid", "bad-permissions", domain.Parameters{DataID: "54ab7e6b-4783-4ad8-818a-86654a76222b.data", Recipient: "app.uid", Permissions: []string{"Root"}, ExpiresAt: now + 3600}, app)
 	submit(badPermissions, 400)
-	request := makeReq("authorization.request", "app.uid", "request", domain.Parameters{DataID: "sample.data", Recipient: "app.uid", Permissions: []string{"Read"}, ExpiresAt: now + 3600}, app)
+	request := makeReq("authorization.request", "app.uid", "request", domain.Parameters{DataID: "54ab7e6b-4783-4ad8-818a-86654a76222b.data", Recipient: "app.uid", Permissions: []string{"Read"}, ExpiresAt: now + 3600}, app)
 	submit(request, 200)
 	fetchAuth := func() domain.AuthorizationRecord {
 		t.Helper()
-		resp, e := http.Get(server.URL + "/v1/authorizations?data_id=sample.data&owner_id=alice.uid&recipient=app.uid")
+		resp, e := http.Get(server.URL + "/v1/authorizations?data_id=54ab7e6b-4783-4ad8-818a-86654a76222b.data&owner_id=alice.uid&recipient=app.uid")
 		if e != nil {
 			t.Fatal(e)
 		}
@@ -115,7 +115,7 @@ func TestRegistrationAuthorizationAndRecovery(t *testing.T) {
 	if pending.Status != domain.AuthorizationPending || pending.IssuedAt != 0 {
 		t.Fatal(pending)
 	}
-	decision := makeReq("authorization.decide", "alice.uid", "decision", domain.Parameters{DataID: "sample.data", Recipient: "app.uid", Status: domain.AuthorizationApproved}, owner)
+	decision := makeReq("authorization.decide", "alice.uid", "decision", domain.Parameters{DataID: "54ab7e6b-4783-4ad8-818a-86654a76222b.data", Recipient: "app.uid", Status: domain.AuthorizationApproved}, owner)
 	unauthorized := decision
 	unauthorized.RequestID = "forged"
 	domain.Sign(&unauthorized, outsider)
@@ -150,21 +150,22 @@ func TestRegistrationAuthorizationAndRecovery(t *testing.T) {
 	if fetchAuth().Status != domain.AuthorizationRejected {
 		t.Fatal("rejection not stored")
 	}
-	// A newly signed application request writes pending at the same composite key,
-	// as specified by DIA Algorithm 2; an exact transport retry retains its receipt.
+	// A new request cannot replace an existing record, including rejection.
+	// The original request remains retryable after later owner decisions.
 	renewal := request
 	renewal.RequestID = "renewal"
 	domain.Sign(&renewal, app)
-	submit(renewal, 200)
-	if fetchAuth().Status != domain.AuthorizationPending {
-		t.Fatal("renewal not pending")
+	submit(renewal, 409)
+	if fetchAuth().Status != domain.AuthorizationRejected {
+		t.Fatal("reapplication changed the rejected authorization")
 	}
-	submit(renewal, 200)
+	submit(renewal, 409)
+	submit(request, 200)
 	state, e := st.View()
 	if e != nil {
 		t.Fatal(e)
 	}
-	if state.Sequence != 7 {
+	if state.Sequence != 6 {
 		t.Fatalf("unexpected sequence: %d", state.Sequence)
 	}
 }

@@ -127,7 +127,7 @@ func Apply(s *State, r Request, now int64) (Result, error) {
 		if actor.Kind != "user" {
 			return fail(ErrUnauthorized)
 		}
-		if !validName(p.DataID) || !strings.HasSuffix(p.DataID, ".data") || strings.Count(p.DataID, ".") != 1 || p.Profile == nil || e != nil || u.Scheme == "" || u.Host == "" || u.User != nil || se != nil || len(contentSig) != ed25519.SignatureSize {
+		if !ValidDataID(p.DataID) || p.Profile == nil || e != nil || u.Scheme == "" || u.Host == "" || u.User != nil || se != nil || len(contentSig) != ed25519.SignatureSize {
 			return fail(ErrInvalid)
 		}
 		if _, ok := s.Data[p.DataID]; ok {
@@ -164,14 +164,14 @@ func Apply(s *State, r Request, now int64) (Result, error) {
 			seen[v] = true
 		}
 		// DNS authorization names contain data and recipient, not the issuer.
-		// Preserve existing grants across transfer without creating a second TXT.
+		// An existing record occupies that name regardless of status, expiry, or issuer.
 		for _, a := range s.Authorizations {
-			if a.DataID == p.DataID && a.Recipient == r.Actor && a.OwnerID != data.OwnerID {
+			if a.DataID == p.DataID && a.Recipient == r.Actor {
 				return fail(ErrConflict)
 			}
 		}
 		object = AuthorizationKey(p.DataID, data.OwnerID, r.Actor)
-		// DIA Algorithm 2 writes the requested pending record at its composite key.
+		// Only the first application request creates a record; owners manage its lifecycle.
 		s.Authorizations[object] = AuthorizationRecord{DataID: p.DataID, OwnerID: data.OwnerID, Recipient: r.Actor, Status: AuthorizationPending, Permissions: append([]string(nil), p.Permissions...), ExpiresAt: p.ExpiresAt}
 	case "authorization.decide":
 		data, ok := s.Data[p.DataID]

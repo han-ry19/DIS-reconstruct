@@ -74,7 +74,7 @@ func assertIndependent(t *testing.T, a, b *simulatedStub) {
 func TestIndependentAuthorizationReadWriteSets(t *testing.T) {
 	h := newManagementHarness(t)
 	request := func(id string) domain.Parameters {
-		return domain.Parameters{DataID: "item.data", Recipient: id, Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}
+		return domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: id, Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}
 	}
 	a := simulateRequest(t, h, "request-a", "authorization.request", "app.uid", request("app.uid"))
 	b := simulateRequest(t, h, "request-b", "authorization.request", "other.uid", request("other.uid"))
@@ -82,7 +82,7 @@ func TestIndependentAuthorizationReadWriteSets(t *testing.T) {
 	h.submit("authorization.request", "app.uid", request("app.uid"), true)
 	h.submit("authorization.request", "other.uid", request("other.uid"), true)
 	decision := func(id string) domain.Parameters {
-		return domain.Parameters{DataID: "item.data", Recipient: id, Status: domain.AuthorizationApproved}
+		return domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: id, Status: domain.AuthorizationApproved}
 	}
 	a = simulateRequest(t, h, "decision-a", "authorization.decide", "alice.uid", decision("app.uid"))
 	b = simulateRequest(t, h, "decision-b", "authorization.decide", "alice.uid", decision("other.uid"))
@@ -90,7 +90,7 @@ func TestIndependentAuthorizationReadWriteSets(t *testing.T) {
 	h.submit("authorization.decide", "alice.uid", decision("app.uid"), true)
 	h.submit("authorization.decide", "alice.uid", decision("other.uid"), true)
 	update := func(id, field, value string) domain.Parameters {
-		return domain.Parameters{DataID: "item.data", Recipient: id, Field: field, NewContent: value}
+		return domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: id, Field: field, NewContent: value}
 	}
 	a = simulateRequest(t, h, "update-a", "authorization.update", "alice.uid", update("app.uid", "status", "rejected"))
 	b = simulateRequest(t, h, "update-b", "authorization.update", "alice.uid", update("other.uid", "permissions", "["+"\"Read\",\"Update\""+"]"))
@@ -99,7 +99,7 @@ func TestIndependentAuthorizationReadWriteSets(t *testing.T) {
 	if !conflictsAfter(a, same) {
 		t.Fatal("same authorization lost conflict protection")
 	}
-	transfer := simulateRequest(t, h, "transfer", "data.update", "alice.uid", domain.Parameters{DataID: "item.data", Field: "RP", NewContent: "bob.uid"})
+	transfer := simulateRequest(t, h, "transfer", "data.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Field: "RP", NewContent: "bob.uid"})
 	if !conflictsAfter(transfer, a) {
 		t.Fatal("ownership transfer lost conflict protection")
 	}
@@ -108,13 +108,13 @@ func TestIndependentAuthorizationReadWriteSets(t *testing.T) {
 func TestConcurrentRecipientMovesConflict(t *testing.T) {
 	h := newManagementHarness(t)
 	for _, app := range []string{"app.uid", "other.uid"} {
-		h.submit("authorization.request", app, domain.Parameters{DataID: "item.data", Recipient: app, Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}, true)
-		h.submit("authorization.decide", "alice.uid", domain.Parameters{DataID: "item.data", Recipient: app, Status: domain.AuthorizationApproved}, true)
+		h.submit("authorization.request", app, domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: app, Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}, true)
+		h.submit("authorization.decide", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: app, Status: domain.AuthorizationApproved}, true)
 	}
 	h.keys["target.uid"] = h.keys["app.uid"]
 	h.submit("identity.register", "target.uid", domain.Parameters{IdentityID: "target.uid", Kind: "application", PublicKey: base64.StdEncoding.EncodeToString(h.keys["target.uid"].Public().(ed25519.PublicKey))}, true)
-	a := simulateRequest(t, h, "move-a", "authorization.update", "alice.uid", domain.Parameters{DataID: "item.data", Recipient: "app.uid", Field: "recipient", NewContent: "target.uid"})
-	b := simulateRequest(t, h, "move-b", "authorization.update", "alice.uid", domain.Parameters{DataID: "item.data", Recipient: "other.uid", Field: "recipient", NewContent: "target.uid"})
+	a := simulateRequest(t, h, "move-a", "authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Field: "recipient", NewContent: "target.uid"})
+	b := simulateRequest(t, h, "move-b", "authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "other.uid", Field: "recipient", NewContent: "target.uid"})
 	if !conflictsAfter(a, b) || !conflictsAfter(b, a) {
 		t.Fatal("recipient collision lost protection")
 	}
@@ -125,9 +125,9 @@ func TestMigrateEmbeddedAuthorizationOverlay(t *testing.T) {
 	h.grant()
 	var before domain.State
 	json.Unmarshal(h.query("GetSnapshot"), &before)
-	a := before.Authorizations[domain.AuthorizationKey("item.data", "alice.uid", "app.uid")]
+	a := before.Authorizations[domain.AuthorizationKey("e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", "alice.uid", "app.uid")]
 	h.stub.MockTransactionStart("seed-old-layout")
-	d, _, err := object(h.stub, "item.data")
+	d, _, err := object(h.stub, "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +173,7 @@ func TestMigrateEmbeddedAuthorizationOverlay(t *testing.T) {
 	if !bytes.Equal(ledger, again) {
 		t.Fatal("migration is not idempotent")
 	}
-	if a := after.Authorizations[domain.AuthorizationKey("item.data", "alice.uid", "app.uid")]; a.Status != domain.AuthorizationPending {
+	if a := after.Authorizations[domain.AuthorizationKey("e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", "alice.uid", "app.uid")]; a.Status != domain.AuthorizationPending {
 		t.Fatal("old confirmed grant resurfaced", a)
 	}
 }

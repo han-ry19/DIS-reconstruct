@@ -32,7 +32,10 @@ func TestLiveFabricWorkflow(t *testing.T) {
 	suffix := hex.EncodeToString(id[:])
 	ownerID := "owner-" + suffix + ".uid"
 	appID := "app-" + suffix + ".uid"
-	dataID := "data-" + suffix + ".data"
+	dataID, idErr := domain.NewDataID()
+	if idErr != nil {
+		t.Fatal(idErr)
+	}
 	pub, owner, _ := ed25519.GenerateKey(rand.Reader)
 	appPub, app, _ := ed25519.GenerateKey(rand.Reader)
 	req := func(op, actor, call string, p domain.Parameters, key ed25519.PrivateKey) domain.Request {
@@ -53,7 +56,20 @@ func TestLiveFabricWorkflow(t *testing.T) {
 	submit(req("identity.register", ownerID, "owner", domain.Parameters{IdentityID: ownerID, PublicKey: base64.StdEncoding.EncodeToString(pub), Kind: "user"}, owner))
 	submit(req("identity.register", appID, "app", domain.Parameters{IdentityID: appID, PublicKey: base64.StdEncoding.EncodeToString(appPub), Kind: "application"}, app))
 	dataRequest := req("data.register", ownerID, "data", domain.Parameters{DataID: dataID, Address: "https://example.org/data", DataSignature: base64.StdEncoding.EncodeToString(ed25519.Sign(owner, []byte("payload"))), Profile: &domain.DataProfile{Label: "live", Format: "text/plain", Description: "Fabric integration test"}}, owner)
+	invalidName := dataRequest
+	invalidName.RequestID = "invalid-name-" + suffix
+	invalidName.Parameters.DataID = "readable-" + suffix + ".data"
+	domain.Sign(&invalidName, owner)
+	if _, e := backend.Submit(invalidName); !errors.Is(e, domain.ErrInvalid) {
+		t.Fatalf("readable data name accepted: %v", e)
+	}
 	original := submit(dataRequest)
+	duplicate := dataRequest
+	duplicate.RequestID = "duplicate-id-" + suffix
+	domain.Sign(&duplicate, owner)
+	if _, e := backend.Submit(duplicate); !errors.Is(e, domain.ErrConflict) {
+		t.Fatalf("duplicate data identifier accepted: %v", e)
+	}
 	if retry := submit(dataRequest); retry != original {
 		t.Fatal("retry changed result")
 	}
@@ -70,7 +86,8 @@ func TestLiveFabricWorkflow(t *testing.T) {
 	}
 	permissions := []string{"Read"}
 	expiry := time.Now().Add(time.Hour).Unix()
-	submit(req("authorization.request", appID, "request", domain.Parameters{DataID: dataID, Recipient: appID, Permissions: permissions, ExpiresAt: expiry}, app))
+	authRequest := req("authorization.request", appID, "request", domain.Parameters{DataID: dataID, Recipient: appID, Permissions: permissions, ExpiresAt: expiry}, app)
+	requested := submit(authRequest)
 	p := domain.Parameters{DataID: dataID, Recipient: appID, Status: domain.AuthorizationApproved}
 	if _, e = backend.Submit(req("authorization.decide", appID, "wrong-owner", p, app)); !errors.Is(e, domain.ErrUnauthorized) {
 		t.Fatalf("expected unauthorized owner, got %v", e)
@@ -103,5 +120,31 @@ func TestLiveFabricWorkflow(t *testing.T) {
 	if got.Sequence != state.Sequence+5 {
 		t.Fatal("retries or rejected requests changed state")
 	}
+	if retry := submit(authRequest); retry != requested {
+		t.Fatal("request retry after decision changed its result")
+	}
+	assertReapplicationRejected := func(label string) {
+		t.Helper()
+		before, err := backend.View()
+		if err != nil {
+			t.Fatal(err)
+		}
+		repeat := req("authorization.request", appID, label, authRequest.Parameters, app)
+		if _, err := backend.Submit(repeat); !errors.Is(err, domain.ErrConflict) {
+			t.Fatalf("%s reapplication: %v", label, err)
+		}
+		after, err := backend.View()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(before, after) {
+			t.Fatal("reapplication changed ledger state")
+		}
+	}
+	assertReapplicationRejected("approved")
+	submit(req("authorization.update", ownerID, "reject", domain.Parameters{DataID: dataID, Recipient: appID, Field: "status", NewContent: "rejected"}, owner))
+	assertReapplicationRejected("rejected")
+	submit(req("authorization.update", ownerID, "expire", domain.Parameters{DataID: dataID, Recipient: appID, Field: "expires_at", NewContent: "1"}, owner))
+	assertReapplicationRejected("expired")
 	t.Logf("verified real Fabric commits, signature rejection, owner checks, request conflict and retry: sequence %d", got.Sequence)
 }

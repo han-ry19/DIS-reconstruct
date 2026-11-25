@@ -44,7 +44,10 @@ func TestLiveFabricRejectsOversizedAddress(t *testing.T) {
 	if err = send("identity.register", "register", domain.Parameters{IdentityID: id, Kind: "user", PublicKey: base64.StdEncoding.EncodeToString(pub)}); err != nil {
 		t.Fatal(err)
 	}
-	dataID := "limits-" + hex.EncodeToString(pub[:8]) + ".data"
+	dataID, idErr := domain.NewDataID()
+	if idErr != nil {
+		t.Fatal(idErr)
+	}
 	p := domain.Parameters{DataID: dataID, Address: "https://example.org/" + strings.Repeat("x", 70000), DataSignature: base64.StdEncoding.EncodeToString(ed25519.Sign(key, []byte("data"))), Profile: &domain.DataProfile{}}
 	if err = send("data.register", "oversized", p); !errors.Is(err, domain.ErrInvalid) {
 		t.Fatalf("oversized registration: %v", err)

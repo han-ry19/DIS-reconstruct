@@ -66,7 +66,10 @@ func TestLiveFabricIndependentAuthorizations(t *testing.T) {
 		}
 		submit(request("identity.register", id, domain.Parameters{IdentityID: id, Kind: kind, PublicKey: base64.StdEncoding.EncodeToString(pub)}))
 	}
-	data := "concurrent-" + suffix + ".data"
+	data, idErr := domain.NewDataID()
+	if idErr != nil {
+		t.Fatal(idErr)
+	}
 	submit(request("data.register", owner, domain.Parameters{DataID: data, Address: "https://example.org/data", DataSignature: base64.StdEncoding.EncodeToString(ed25519.Sign(keys[owner], []byte("payload"))), Profile: &domain.DataProfile{Label: "Concurrency"}}))
 	endorse := func(r domain.Request) *client.Transaction {
 		t.Helper()

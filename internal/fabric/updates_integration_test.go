@@ -41,7 +41,10 @@ func TestLiveFabricManagementUpdates(t *testing.T) {
 	nextID := "next-" + suffix + ".uid"
 	appID := "app-" + suffix + ".uid"
 	otherID := "other-" + suffix + ".uid"
-	dataID := "item-" + suffix + ".data"
+	dataID, idErr := domain.NewDataID()
+	if idErr != nil {
+		t.Fatal(idErr)
+	}
 	keys := map[string]ed25519.PrivateKey{}
 	calls := 0
 	submit := func(op, actor string, p domain.Parameters) (domain.Request, domain.Result) {

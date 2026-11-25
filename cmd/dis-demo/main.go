@@ -40,7 +40,10 @@ func run() error {
 	suffix := hex.EncodeToString(random[:])
 	ownerID := "user-" + suffix + ".uid"
 	appID := "app-" + suffix + ".uid"
-	dataID := "data-" + suffix + ".data"
+	dataID, idErr := domain.NewDataID()
+	if idErr != nil {
+		return idErr
+	}
 	ownerPub, owner, e := ed25519.GenerateKey(rand.Reader)
 	if e != nil {
 		return e

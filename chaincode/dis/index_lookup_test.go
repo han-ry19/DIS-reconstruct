@@ -21,7 +21,7 @@ func TestIndexQueriesDoNotScanUnrelatedObjectsOrReceipts(t *testing.T) {
 		if err := json.Unmarshal(h.query(method, "alice.uid"), &result); err != nil {
 			t.Fatal(err)
 		}
-		if len(result) != 1 || result[0].ID != "item.data" {
+		if len(result) != 1 || result[0].ID != "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data" {
 			t.Fatalf("%s: %+v", method, result)
 		}
 	}

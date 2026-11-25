@@ -24,7 +24,7 @@ For example, the parameters for changing an address are:
 
 ~~~json
 {
-  "data_id": "sample.data",
+  "data_id": "550e8400-e29b-41d4-a716-446655440000.data",
   "field": "URI",
   "new_content": "https://data.example/updated"
 }
@@ -34,7 +34,7 @@ The parameters for reducing permissions are:
 
 ~~~json
 {
-  "data_id": "sample.data",
+  "data_id": "550e8400-e29b-41d4-a716-446655440000.data",
   "recipient": "app.uid",
   "field": "permissions",
   "new_content": "[\"Read\"]"
@@ -53,7 +53,7 @@ An RP update changes the data owner and preserves existing authorization records
 
 DNS authorization names contain the recipient and data identifier. Changing recipient removes the old authorization key and DNS label before publishing the replacement. A collision with another confirmed or pending authorization is rejected, including authorizations retained from a previous owner. An application cannot create a second issuer-specific grant at the same DNS name after ownership transfer; the current owner can edit the existing record.
 
-A pending request replaces an earlier decision in the same data/recipient record. Updating or moving that record cannot reveal an older grant after a snapshot or restart. Non-status field updates preserve the existing status and issuance time; changing status through the field-update operation also leaves the issuance attribute unchanged. The owner-decision operation sets issuance time when deciding a request.
+Only the first application request creates the data/recipient authorization record. Further requests return HTTP 409 while that record exists, regardless of its status, expiration, or original issuer. Rejected and expired records remain available for the current owner to update. Exact retries return the saved result and never reset an owner decision. A recipient update moves the record, removing the old name; the old name can subsequently receive a new request if no record remains there. Non-status field updates preserve the existing status and issuance time; changing status through the field-update operation also leaves the issuance attribute unchanged. The owner-decision operation sets issuance time when deciding a request.
 
 ## Ledger records and queries
 
@@ -104,7 +104,7 @@ DIS_TEST_DNS_ADDRESS=127.0.0.1:38530 \
 go test -race -count=1 -v ./internal/fabric -run TestLiveFabricManagementUpdates
 ~~~
 
-The unit tests cover all seven fields, rejected changes with unchanged state, ownership transfer, collisions, pending/confirmed overlays, exact retries, HTTP persistence, event/snapshot equivalence, Redis key deletion, and recovery. The integration workflow commits fourteen transactions and checks all seven update fields.
+The unit tests cover all seven fields, rejected changes with unchanged state, ownership transfer, collisions, first-request creation and rejection of repeat applications, exact retries, HTTP persistence, event/snapshot equivalence, Redis key deletion, and recovery. The integration workflow commits fourteen transactions and checks all seven update fields.
 
 ## Concurrent authorization verification
 

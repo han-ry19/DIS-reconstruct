@@ -78,6 +78,20 @@ curl --fail-with-body -H 'Content-Type: application/json'   --data-binary @"$exa
 
 A successful response contains the request ID, operation, object ID, and committed result. Keep the generated private key for subsequent requests by this identity. Change the domain and API address when using another deployment. The [API schema](../api/openapi.yaml) defines request fields; [management operations](management-updates.md) provides update parameters. Exact retries return the original result; changed content with the same actor/request ID is rejected.
 
+## Data identifiers and authorization lifecycle
+
+Generate a data identifier before building and signing a data.register request:
+
+~~~bash
+bin/dis-cli data-id
+~~~
+
+The output is a lowercase UUIDv4 followed by .data. Put this value in parameters.data_id and retain the signed request for retries. The contract rejects readable names, non-v4 UUIDs, invalid variant bits, and duplicate identifiers for new registrations. Store a human-readable name in profile.label. Existing identifiers are not renamed and remain available for lookup and updates.
+
+An authorization.request creates the first record for a data identifier and recipient. Any existing record causes HTTP 409, including pending, rejected, expired, and prior-owner records. The current data owner uses authorization.update to change permissions, status, or expiration. Exact retries of a committed request return the original result without changing the current authorization. Ownership transfer retains existing authorizations and gives their management to the new owner.
+
+The publisher uses committed events for incremental DNS updates, with a full snapshot for initialization and recovery.
+
 ## Stop and restart
 
 ~~~bash

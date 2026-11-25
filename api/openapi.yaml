@@ -33,7 +33,7 @@ paths:
         '404':
           description: Referenced record does not exist
         '409':
-          description: Conflicting identifier, request ID, or concurrent ledger update
+          description: Conflicting identifier, existing authorization, changed request ID content, or concurrent ledger update
   /v1/identities/{id}:
     get:
       parameters:
@@ -93,7 +93,7 @@ components:
             identity_id: {type: string}
             public_key: {type: string, description: Base64 Ed25519 public key}
             kind: {type: string, enum: [user, application]}
-            data_id: {type: string}
+            data_id: {type: string, description: "New registrations require a lowercase UUIDv4 followed by .data. Existing identifiers remain valid for lookup and management.", example: "550e8400-e29b-41d4-a716-446655440000.data"}
             address: {type: string, description: Absolute address with at most 1024 UTF-8 bytes}
             data_signature: {type: string}
             profile:

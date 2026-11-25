@@ -41,7 +41,7 @@ func newManagementHarness(t *testing.T) *managementHarness {
 		}
 		h.submit("identity.register", id, domain.Parameters{IdentityID: id, Kind: kind, PublicKey: base64.StdEncoding.EncodeToString(k.Public().(ed25519.PublicKey))}, true)
 	}
-	h.submit("data.register", "alice.uid", domain.Parameters{DataID: "item.data", Address: "https://example.org/old", DataSignature: base64.StdEncoding.EncodeToString(make([]byte, 64)), Profile: &domain.DataProfile{Label: "Item"}}, true)
+	h.submit("data.register", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Address: "https://example.org/old", DataSignature: base64.StdEncoding.EncodeToString(make([]byte, 64)), Profile: &domain.DataProfile{Label: "Item"}}, true)
 	return h
 }
 func (h *managementHarness) query(function string, args ...string) []byte {
@@ -117,39 +117,39 @@ func (h *managementHarness) submit(op, actor string, p domain.Parameters, ok boo
 }
 func (h *managementHarness) grant() {
 	h.t.Helper()
-	h.submit("authorization.request", "app.uid", domain.Parameters{DataID: "item.data", Recipient: "app.uid", Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}, true)
-	h.submit("authorization.decide", "alice.uid", domain.Parameters{DataID: "item.data", Recipient: "app.uid", Status: domain.AuthorizationApproved}, true)
+	h.submit("authorization.request", "app.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}, true)
+	h.submit("authorization.decide", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Status: domain.AuthorizationApproved}, true)
 }
 func TestManagementLedgerAndIndexes(t *testing.T) {
 	h := newManagementHarness(t)
 	h.grant()
 	var index, id string
-	json.Unmarshal(h.query("TransDOIToIndex", "item.data"), &index)
+	json.Unmarshal(h.query("TransDOIToIndex", "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data"), &index)
 	json.Unmarshal(h.query("TransIndexToDOI", index), &id)
-	if id != "item.data" {
+	if id != "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data" {
 		t.Fatal("mapping not reversible")
 	}
-	expected := base64.StdEncoding.EncodeToString([]byte("tx-5item.data"))
+	expected := base64.StdEncoding.EncodeToString([]byte("tx-5e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data"))
 	if index != expected {
 		t.Fatal("unexpected historical index format", index)
 	}
 	var original transactionInfo
-	json.Unmarshal(h.query("GetTransactionInfo", "item.data"), &original)
+	json.Unmarshal(h.query("GetTransactionInfo", "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data"), &original)
 	var profile domain.DataProfile
 	found, e := read(h.stub, registrationKind, &profile, index)
 	if e != nil || !found || profile.Label != "Item" {
 		t.Fatal("registration data missing", e)
 	}
-	h.submit("data.update", "alice.uid", domain.Parameters{DataID: "item.data", Field: "URI", NewContent: "https://example.org/new"}, true)
-	h.submit("data.update", "alice.uid", domain.Parameters{DataID: "item.data", Field: "TXT", NewContent: base64.StdEncoding.EncodeToString(ed25519.Sign(h.keys["alice.uid"], []byte("changed payload")))}, true)
-	h.submit("authorization.update", "alice.uid", domain.Parameters{DataID: "item.data", Recipient: "app.uid", Field: "permissions", NewContent: "[\"Read\",\"Update\"]"}, true)
-	h.submit("authorization.update", "alice.uid", domain.Parameters{DataID: "item.data", Recipient: "app.uid", Field: "recipient", NewContent: "other.uid"}, true)
-	old := h.stub.MockInvoke("old", [][]byte{[]byte("GetAuthorization"), []byte("item.data"), []byte("alice.uid"), []byte("app.uid")})
+	h.submit("data.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Field: "URI", NewContent: "https://example.org/new"}, true)
+	h.submit("data.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Field: "TXT", NewContent: base64.StdEncoding.EncodeToString(ed25519.Sign(h.keys["alice.uid"], []byte("changed payload")))}, true)
+	h.submit("authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Field: "permissions", NewContent: "[\"Read\",\"Update\"]"}, true)
+	h.submit("authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Field: "recipient", NewContent: "other.uid"}, true)
+	old := h.stub.MockInvoke("old", [][]byte{[]byte("GetAuthorization"), []byte("e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data"), []byte("alice.uid"), []byte("app.uid")})
 	if old.Status == 200 {
 		t.Fatal("old recipient still in ledger")
 	}
 	var changed domain.AuthorizationRecord
-	json.Unmarshal(h.query("GetAuthorization", "item.data", "alice.uid", "other.uid"), &changed)
+	json.Unmarshal(h.query("GetAuthorization", "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", "alice.uid", "other.uid"), &changed)
 	if !reflect.DeepEqual(changed.Permissions, []string{"Read", "Update"}) {
 		t.Fatal(changed)
 	}
@@ -160,7 +160,7 @@ func TestManagementLedgerAndIndexes(t *testing.T) {
 	if len(h.stub.State[oldKey]) != 0 || string(h.stub.State[newKey]) != index {
 		t.Fatal("recipient index did not move")
 	}
-	h.submit("data.update", "alice.uid", domain.Parameters{DataID: "item.data", Field: "RP", NewContent: "bob.uid"}, true)
+	h.submit("data.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Field: "RP", NewContent: "bob.uid"}, true)
 	aliceIndex, _ := rawIndex(h.stub, doiToIndexKind, "alice.uid")
 	bobIndex, _ := rawIndex(h.stub, doiToIndexKind, "bob.uid")
 	for _, kind := range []string{ownerIndexKind, authorizedIndexKind} {
@@ -170,7 +170,7 @@ func TestManagementLedgerAndIndexes(t *testing.T) {
 			t.Fatal("ownership index did not move", kind)
 		}
 	}
-	p := domain.Parameters{DataID: "item.data", AuthorizationOwner: "alice.uid", Recipient: "other.uid", Field: "status", NewContent: "rejected"}
+	p := domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", AuthorizationOwner: "alice.uid", Recipient: "other.uid", Field: "status", NewContent: "rejected"}
 	h.submit("authorization.update", "alice.uid", p, false)
 	h.submit("authorization.update", "bob.uid", p, true)
 	var listing []domain.DataIdentifier
@@ -201,17 +201,16 @@ func TestManagementLedgerAndIndexes(t *testing.T) {
 		t.Fatal("new owner missing data")
 	}
 	var current transactionInfo
-	json.Unmarshal(h.query("GetTransactionInfo", "item.data"), &current)
+	json.Unmarshal(h.query("GetTransactionInfo", "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data"), &current)
 	if current.CreatedAt != original.CreatedAt || current.Index != original.Index || current.TransactionID == original.TransactionID {
 		t.Fatal("transaction history metadata incorrect", original, current)
 	}
 }
 func TestPendingUpdateAndCollision(t *testing.T) {
 	h := newManagementHarness(t)
-	h.grant()
-	h.submit("authorization.request", "app.uid", domain.Parameters{DataID: "item.data", Recipient: "app.uid", Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}, true)
-	h.submit("authorization.update", "alice.uid", domain.Parameters{DataID: "item.data", Recipient: "app.uid", Field: "recipient", NewContent: "other.uid"}, true)
-	d, _, e := object(h.stub, "item.data")
+	h.submit("authorization.request", "app.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}, true)
+	h.submit("authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Field: "recipient", NewContent: "other.uid"}, true)
+	d, _, e := object(h.stub, "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -219,25 +218,25 @@ func TestPendingUpdateAndCollision(t *testing.T) {
 		t.Fatal("pending rename resurrected old confirmed grant", d)
 	}
 	var a domain.AuthorizationRecord
-	json.Unmarshal(h.query("GetAuthorization", "item.data", "alice.uid", "other.uid"), &a)
+	json.Unmarshal(h.query("GetAuthorization", "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", "alice.uid", "other.uid"), &a)
 	if a.Status != domain.AuthorizationPending {
 		t.Fatal(a)
 	}
-	h.submit("authorization.decide", "alice.uid", domain.Parameters{DataID: "item.data", Recipient: "other.uid", Status: domain.AuthorizationApproved}, true)
-	h.submit("authorization.request", "app.uid", domain.Parameters{DataID: "item.data", Recipient: "app.uid", Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}, true)
-	h.submit("authorization.update", "alice.uid", domain.Parameters{DataID: "item.data", Recipient: "other.uid", Field: "recipient", NewContent: "app.uid"}, false)
+	h.submit("authorization.decide", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "other.uid", Status: domain.AuthorizationApproved}, true)
+	h.submit("authorization.request", "app.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}, true)
+	h.submit("authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "other.uid", Field: "recipient", NewContent: "app.uid"}, false)
 	// Moving back removes the pending key too; no old pending entry survives.
-	h.submit("authorization.update", "alice.uid", domain.Parameters{DataID: "item.data", Recipient: "app.uid", Field: "status", NewContent: "rejected"}, true)
-	pendingKey, _ := key(h.stub, pendingKind, "item.data", "alice.uid", "app.uid")
+	h.submit("authorization.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Field: "status", NewContent: "rejected"}, true)
+	pendingKey, _ := key(h.stub, pendingKind, "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", "alice.uid", "app.uid")
 	if len(h.stub.State[pendingKey]) != 0 {
 		t.Fatal("finalized authorization remained pending")
 	}
 }
 func TestPendingCollisionFromHistoricalIssuer(t *testing.T) {
 	h := newManagementHarness(t)
-	h.submit("authorization.request", "other.uid", domain.Parameters{DataID: "item.data", Recipient: "other.uid", Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}, true)
-	h.submit("data.update", "alice.uid", domain.Parameters{DataID: "item.data", Field: "RP", NewContent: "bob.uid"}, true)
-	h.submit("authorization.request", "app.uid", domain.Parameters{DataID: "item.data", Recipient: "app.uid", Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}, true)
-	h.submit("authorization.update", "bob.uid", domain.Parameters{DataID: "item.data", Recipient: "app.uid", Field: "recipient", NewContent: "other.uid"}, false)
-	h.submit("authorization.request", "other.uid", domain.Parameters{DataID: "item.data", Recipient: "other.uid", Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}, false)
+	h.submit("authorization.request", "other.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "other.uid", Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}, true)
+	h.submit("data.update", "alice.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Field: "RP", NewContent: "bob.uid"}, true)
+	h.submit("authorization.request", "app.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}, true)
+	h.submit("authorization.update", "bob.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Field: "recipient", NewContent: "other.uid"}, false)
+	h.submit("authorization.request", "other.uid", domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "other.uid", Permissions: []string{"Read"}, ExpiresAt: time.Now().Unix() + 3600}, false)
 }

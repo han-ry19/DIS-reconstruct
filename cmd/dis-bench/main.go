@@ -134,7 +134,11 @@ func run() error {
 			request.Actor = label + ".uid"
 			request.Parameters = domain.Parameters{IdentityID: request.Actor, PublicKey: base64.StdEncoding.EncodeToString(pub), Kind: "user"}
 		} else {
-			request.Parameters = domain.Parameters{DataID: label + ".data", Address: "https://data.example/benchmark/item", DataSignature: dataSignature, Profile: &domain.DataProfile{Label: "benchmark", Format: "text/plain", Description: "Identifier registration workload"}}
+			dataID, idErr := domain.NewDataID()
+			if idErr != nil {
+				return idErr
+			}
+			request.Parameters = domain.Parameters{DataID: dataID, Address: "https://data.example/benchmark/item", DataSignature: dataSignature, Profile: &domain.DataProfile{Label: "benchmark", Format: "text/plain", Description: "Identifier registration workload"}}
 		}
 		if *operation == "data.read" {
 			request.Parameters.DataID = existingData[i%len(existingData)]

@@ -139,3 +139,7 @@ The API, DNS, and Redis listeners currently bind to the controller's loopback in
 - [System verification](docs/verification.md)
 - [Experiment deployment](docs/experiment-deployment.md)
 - [Original implementation mapping](docs/original-implementation.md)
+
+### Identifier and authorization rules
+
+Clients generate UUIDv4 data identifiers before signing registration requests; use bin/dis-cli data-id to generate a canonical identifier in the .data zone. Descriptive names are stored in the data profile. An existing authorization record prevents a new application request for the same data/recipient pair, regardless of status or expiration. The current owner updates that record. Ownership transfer preserves existing authorizations and transfers their management to the new owner. See the [running guide](docs/runbook.md#data-identifiers-and-authorization-lifecycle) for details.

@@ -16,7 +16,7 @@ func TestIndexAuthorizationUsesCurrentBusinessState(t *testing.T) {
 		}
 		return len(result)
 	}
-	p := domain.Parameters{DataID: "item.data", Recipient: "app.uid", Permissions: []string{"Read"}, ExpiresAt: time.Now().Add(time.Hour).Unix()}
+	p := domain.Parameters{DataID: "e50021a0-bd86-4273-9cfe-c0ffeed3dcaf.data", Recipient: "app.uid", Permissions: []string{"Read"}, ExpiresAt: time.Now().Add(time.Hour).Unix()}
 	h.submit("authorization.request", "app.uid", p, true)
 	if query() != 0 {
 		t.Fatal("pending request granted access")
@@ -34,8 +34,8 @@ func TestIndexAuthorizationUsesCurrentBusinessState(t *testing.T) {
 	if query() != 0 {
 		t.Fatal("expired association returned")
 	}
-	h.submit("authorization.request", "app.uid", p, true)
+	h.submit("authorization.request", "app.uid", p, false)
 	if query() != 0 {
-		t.Fatal("pending overlay exposed prior authorization")
+		t.Fatal("rejected reapplication changed expired authorization")
 	}
 }
