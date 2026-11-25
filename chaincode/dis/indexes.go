@@ -34,7 +34,7 @@ func rawIndex(stub shim.ChaincodeStubInterface, kind, id string) (string, error)
 	return string(b), e
 }
 
-// The historical chaincode uses raw, bidirectional DOI/index mappings.
+// Identifier mappings store raw values in both directions.
 func ensureIndex(stub shim.ChaincodeStubInterface, id string) (string, error) {
 	index, e := rawIndex(stub, doiToIndexKind, id)
 	if e != nil || index != "" {

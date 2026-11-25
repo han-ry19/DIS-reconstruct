@@ -10,7 +10,7 @@ The data owner decides application permissions. Fabric peers verify the signed o
 
 ## Ledger organization
 
-Fabric stores identities, data objects, pending authorizations, and receipts under composite keys. Decided authorizations are embedded in data objects, following the historical chaincode. Identifier mappings, owner and recipient associations, transaction information, and registration metadata support management queries. The object layout is an implementation choice; the DNS projection defines the externally resolved records. Performance reports should identify this layout and its write sets.
+Fabric stores identities, data objects, pending authorizations, and receipts under composite keys. Decided authorizations are embedded in data objects. Identifier mappings, owner and recipient associations, transaction information, and registration metadata support management queries. The object layout is an implementation choice; the DNS projection defines the externally resolved records. Performance reports should identify this layout and its write sets.
 
 Fresh ledgers identify successful transitions by transaction ID and actor-scoped receipts. Snapshots derive the publication sequence from committed receipts, keeping unrelated registrations' write sets independent. Existing ledgers retain their sequence format. MigrateState converts the earlier dis.state.v1 document to object records.
 

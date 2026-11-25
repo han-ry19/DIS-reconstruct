@@ -57,17 +57,17 @@ A pending request can overlay an earlier decision at the same composite key. Upd
 
 ## Ledger records and queries
 
-The [historical chaincode revision 63c85ef](https://github.com/fuxi-inc/dip-dis-chaincode/tree/63c85ef11515e9183e7e2bc4b01fb34f1e390d00) provides the source for the following key families:
+The reconstruction maintains these auxiliary ledger records:
 
-| Key family | Role | Historical source |
-|---|---|---|
-| DOIToIndex / IndexToDOI | Reversible identifier mappings; raw byte values | contract/doi_index.go |
-| dataOwner-dataObject | Owner-to-data association | contract/save_dataobject.go |
-| DOAuthorized | Recipient-to-data association | contract/save_dataobject.go and contract/save_confirmed_auth.go |
-| TransactionInfo | Creation time, latest transaction ID and update time | contract/get_transaction_info.go |
-| RegistrationData | Registration description | contract/save_dataobject.go |
+| Key family | Role |
+|---|---|
+| DOIToIndex / IndexToDOI | Reversible identifier mappings; raw byte values |
+| dataOwner-dataObject | Owner-to-data association |
+| DOAuthorized | Recipient-to-data association |
+| TransactionInfo | Creation time, latest transaction ID and update time |
+| RegistrationData | Registration description |
 
-The internal index follows the historical Base64(transaction ID + identifier) construction. New registrations write mappings, associations, transaction information, and the profile's registration metadata. Updates move affected associations and retain creation time while recording the new transaction ID and timestamp. The reconstruction stores these keys alongside its business objects and represents timestamps as Unix seconds.
+The internal index encodes the transaction ID and identifier using Base64. New registrations write mappings, associations, transaction information, and registration metadata. Updates maintain the affected associations and transaction information. Timestamps use Unix seconds.
 
 The contract exposes TransDOIToIndex, TransIndexToDOI, GetTransactionInfo, GetOwnedData, and GetAuthorizedData, each taking one identifier (TransIndexToDOI takes an internal index). The list queries validate authoritative business records, with approved status and unexpired authorization required for recipient access. Fresh deployments query the owner's or recipient's association index and validate each referenced business record, including pending overlays and expiration. Earlier deployments retain the snapshot lookup to include records created before index maintenance; a fresh runtime enables the indexed path.
 

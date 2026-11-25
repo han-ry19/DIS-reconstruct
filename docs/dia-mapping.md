@@ -36,4 +36,4 @@ Page numbers below are PDF viewer pages. In the first paper, PDF page 9 is print
 
 ## Implementation sources
 
-The paper algorithms define the business workflow. The inspected historical code supplies the object ledger and event-driven Redis/CoreDNS path; see [historical sources](original-implementation.md). Request encoding, retries, and recovery are described in [implementation decisions](decisions.md). [Management operations](management-updates.md) defines the implemented updates, and [verification](verification.md) describes executable checks.
+The paper algorithms define the business workflow. The reconstruction uses an object ledger and an event-driven Redis/CoreDNS path; see [ledger and DNS implementation](original-implementation.md). Request encoding, retries, and recovery are described in [implementation decisions](decisions.md). [Management operations](management-updates.md) defines the implemented updates, and [verification](verification.md) describes executable checks.
